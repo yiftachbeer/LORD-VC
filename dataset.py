@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 import imageio
 import cv2
-import dlib
 import h5py
 
 
@@ -277,6 +276,7 @@ class RaFD(DataSet):
 		imgs = np.empty(shape=(len(img_paths), 64, 64, 3), dtype=np.uint8)
 		expressions = np.empty(shape=(len(img_paths), ), dtype=np.uint32)
 
+		import dlib
 		face_detector = dlib.get_frontal_face_detector()
 		for i in range(len(img_paths)):
 			img = imageio.imread(img_paths[i])

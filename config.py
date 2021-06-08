@@ -1,6 +1,7 @@
 base_config = dict(
-	content_dim=128,
-	class_dim=256,
+	content_dim=2048,
+	class_dim=128,
+
 
 	content_std=1,
 	content_decay=1e-4,
@@ -13,13 +14,13 @@ base_config = dict(
 	),
 
 	train=dict(
-		batch_size=128,
+		batch_size=32,
 		n_epochs=200,
 
 		learning_rate=dict(
-			generator=3e-4,
-			latent=3e-3,
-			min=1e-5
+			generator=3e-3,
+			latent=3e-2,
+			min=1e-4
 		)
 	),
 

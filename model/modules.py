@@ -3,6 +3,8 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
+from model.adain_vc_model import Decoder
+
 
 class LatentModel(nn.Module):
 
@@ -13,14 +15,17 @@ class LatentModel(nn.Module):
 
 		self.content_embedding = RegularizedEmbedding(config['n_imgs'], config['content_dim'], config['content_std'])
 		self.class_embedding = nn.Embedding(config['n_classes'], config['class_dim'])
-		self.modulation = Modulation(config['class_dim'], config['n_adain_layers'], config['adain_dim'])
-		self.generator = Generator(config['content_dim'], config['n_adain_layers'], config['adain_dim'], config['img_shape'])
+		self.decoder = Decoder(c_in=128, c_cond=128, c_h=128, c_out=80, kernel_size=5, n_conv_blocks=6,
+								upsample=[2, 1, 2, 1, 2, 1], act="relu", sn=False, dropout_rate=0.0)
 
 	def forward(self, img_id, class_id):
 		content_code = self.content_embedding(img_id)
 		class_code = self.class_embedding(class_id)
-		class_adain_params = self.modulation(class_code)
-		generated_img = self.generator(content_code, class_adain_params)
+
+		# matching dims from LORD to AdaIN-VC decoder
+		content_code = content_code.reshape((-1, 128, 16))
+
+		generated_img = self.decoder(content_code, class_code)
 
 		return {
 			'img': generated_img,
@@ -267,6 +272,11 @@ class VGGDistance(nn.Module):
 		self.layer_ids = layer_ids
 
 	def forward(self, I1, I2):
+		# To apply VGG on grayscale, we duplicate the single channel
+		if I1.shape[1] == 1:
+			I1 = torch.cat((I1, I1, I1), dim=1)
+			I2 = torch.cat((I2, I2, I2), dim=1)
+
 		b_sz = I1.size(0)
 		f1 = self.vgg(I1)
 		f2 = self.vgg(I2)

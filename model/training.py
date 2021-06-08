@@ -4,6 +4,9 @@ import pickle
 from tqdm import tqdm
 
 import numpy as np
+import matplotlib.pyplot as plt
+import io
+from PIL import Image
 
 import torch
 from torch import nn
@@ -11,6 +14,8 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+
+import wandb
 
 from model.modules import LatentModel, AmortizedModel, VGGDistance
 from model.utils import AverageMeter, NamedTensorDataset
@@ -48,12 +53,12 @@ class Lord:
 		if amortized:
 			torch.save(self.amortized_model.state_dict(), os.path.join(model_dir, 'amortized.pth'))
 
-	def train_latent(self, imgs, classes, model_dir, tensorboard_dir):
+	def train_latent(self, imgs, classes, model_dir):
 		self.latent_model = LatentModel(self.config)
 
 		data = dict(
 			img=torch.from_numpy(imgs).permute(0, 3, 1, 2),
-			img_id=torch.from_numpy(np.arange(imgs.shape[0])),
+			img_id=torch.arange(imgs.shape[0]).type(torch.int64),
 			class_id=torch.from_numpy(classes.astype(np.int64))
 		)
 
@@ -71,7 +76,7 @@ class Lord:
 
 		optimizer = Adam([
 			{
-				'params': itertools.chain(self.latent_model.modulation.parameters(), self.latent_model.generator.parameters()),
+				'params': self.latent_model.decoder.parameters(),
 				'lr': self.config['train']['learning_rate']['generator']
 			},
 			{
@@ -86,7 +91,7 @@ class Lord:
 			eta_min=self.config['train']['learning_rate']['min']
 		)
 
-		summary = SummaryWriter(log_dir=tensorboard_dir)
+		visualized_imgs = []
 
 		train_loss = AverageMeter()
 		for epoch in range(self.config['train']['n_epochs']):
@@ -97,11 +102,11 @@ class Lord:
 			for batch in pbar:
 				batch = {name: tensor.to(self.device) for name, tensor in batch.items()}
 
-				optimizer.zero_grad()
+				optimizer.zero_grad(set_to_none=True)
 				out = self.latent_model(batch['img_id'], batch['class_id'])
 
 				content_penalty = torch.sum(out['content_code'] ** 2, dim=1).mean()
-				loss = criterion(out['img'], batch['img']) + self.config['content_decay'] * content_penalty
+				loss = criterion(out['img'][:, None, ...], batch['img']) + self.config['content_decay'] * content_penalty
 
 				loss.backward()
 				optimizer.step()
@@ -114,15 +119,22 @@ class Lord:
 			pbar.close()
 			self.save(model_dir, latent=True, amortized=False)
 
-			summary.add_scalar(tag='loss', scalar_value=train_loss.avg, global_step=epoch)
+			wandb.log({
+				'loss': train_loss.avg,
+				'decoder_lr': scheduler.get_last_lr()[0],
+				'latent_lr': scheduler.get_last_lr()[1],
+			}, step=epoch)
 
-			fixed_sample_img = self.generate_samples(dataset, randomized=False)
-			random_sample_img = self.generate_samples(dataset, randomized=True)
+			with torch.no_grad():
+				fixed_sample_img = self.generate_samples(dataset, step=epoch)
 
-			summary.add_image(tag='sample-fixed', img_tensor=fixed_sample_img, global_step=epoch)
-			summary.add_image(tag='sample-random', img_tensor=random_sample_img, global_step=epoch)
+			wandb.log({f'generated-{epoch}': [wandb.Image(fixed_sample_img)]}, step=epoch)
+			visualized_imgs.append(np.asarray(fixed_sample_img).transpose(2,0,1)[:3])
 
-		summary.close()
+			if epoch % 5 == 0:
+				wandb.log({f'video': [
+					wandb.Video(np.array(visualized_imgs)),
+				]}, step=epoch)
 
 	def train_amortized(self, imgs, classes, model_dir, tensorboard_dir):
 		self.amortized_model = AmortizedModel(self.config)
@@ -210,31 +222,50 @@ class Lord:
 
 		summary.close()
 
-	def generate_samples(self, dataset, n_samples=5, randomized=False):
+	def generate_samples(self, dataset, n_samples=4, step=None):
 		self.latent_model.eval()
 
-		if randomized:
-			random = np.random
-		else:
-			random = np.random.RandomState(seed=1234)
-
-		img_idx = torch.from_numpy(random.choice(len(dataset), size=n_samples, replace=False))
+		img_idx = torch.from_numpy(np.random.RandomState(seed=1234).choice(len(dataset), size=n_samples, replace=False).astype(np.int64))
 
 		samples = dataset[img_idx]
 		samples = {name: tensor.to(self.device) for name, tensor in samples.items()}
-
-		blank = torch.ones_like(samples['img'][0])
-		output = [torch.cat([blank] + list(samples['img']), dim=2)]
+		fig = plt.figure(figsize=(10, 10))
+		if step:
+			fig.suptitle(f'Step={step}')
 		for i in range(n_samples):
-			converted_imgs = [samples['img'][i]]
+			# Plot row headers (speaker)
+			plt.subplot(n_samples + 1, n_samples + 1,
+						n_samples + 1 + i * (n_samples + 1) + 1)
+			plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
+			plt.gca().invert_yaxis()
+			plt.axis('off')
+
+			# Plot column headers (content)
+			plt.subplot(n_samples + 1, n_samples + 1, i + 2)
+			plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
+			plt.gca().invert_yaxis()
+			plt.axis('off')
 
 			for j in range(n_samples):
-				out = self.latent_model(samples['img_id'][[j]], samples['class_id'][[i]])
-				converted_imgs.append(out['img'][0])
+				plt.subplot(n_samples + 1, n_samples + 1,
+							n_samples + 2 + i * (n_samples + 1) + j + 1)
 
-			output.append(torch.cat(converted_imgs, dim=2))
+				content_id = samples['img_id'][[j]]
+				class_id = samples['class_id'][[i]]
+				cvt = self.latent_model(content_id, class_id)['img'][0].detach().cpu().numpy()
 
-		return torch.cat(output, dim=1)
+				if step % 5 == 0:
+					np.savez(f'samples/{step}_{content_id.item()}({samples["class_id"][[j]].item()})to{class_id.item()}.npz', cvt)
+
+				plt.imshow(cvt, cmap='inferno')
+				plt.gca().invert_yaxis()
+				plt.axis('off')
+
+		buf = io.BytesIO()
+		plt.savefig(buf, format='png')
+		buf.seek(0)
+		pil_img = Image.open(buf)
+		return pil_img
 
 	def generate_samples_amortized(self, dataset, n_samples=5, randomized=False):
 		self.amortized_model.eval()
