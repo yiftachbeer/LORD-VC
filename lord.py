@@ -97,28 +97,29 @@ def train(args):
 
 	print('Saving...')
 	lord.save(model_dir, latent=True, amortized=False)
+	print('Saved.')
 
 
 def train_encoders(args):
 	assets = AssetManager(args.base_dir)
 	model_dir = assets.get_model_dir(args.model_name)
-	tensorboard_dir = assets.get_tensorboard_dir(args.model_name)
 
 	data = np.load(assets.get_preprocess_file_path(args.data_name))
-	imgs = data['imgs'].astype(np.float32) / 255.0
+	imgs = data['imgs']
 
 	lord = Lord()
 	lord.load(model_dir, latent=True, amortized=False)
 
-	lord.train_amortized(
-		imgs=imgs,
-		classes=data['classes'],
+	with wandb.init(config=lord.config):
+		lord.train_amortized(
+			imgs=imgs,
+			classes=data['classes'],
+			model_dir=model_dir
+		)
 
-		model_dir=model_dir,
-		tensorboard_dir=tensorboard_dir
-	)
-
+	print('Saving...')
 	lord.save(model_dir, latent=False, amortized=True)
+	print('Saved.')
 
 
 def main():

@@ -211,7 +211,6 @@ class ContentEncoder(nn.Module):
         )
         self.norm_layer = nn.InstanceNorm1d(c_h, affine=False)
         self.mean_layer = nn.Conv1d(c_h, c_out, kernel_size=1)
-        self.std_layer = nn.Conv1d(c_h, c_out, kernel_size=1)
         self.dropout_layer = nn.Dropout(p=dropout_rate)
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
@@ -234,8 +233,7 @@ class ContentEncoder(nn.Module):
             out = F.avg_pool1d(out, kernel_size=self.subsample[idx], ceil_mode=True)
             out = y + out
         mu = self.mean_layer(out)
-        log_sigma = self.std_layer(out)
-        return mu, log_sigma
+        return mu
 
 
 class Decoder(nn.Module):

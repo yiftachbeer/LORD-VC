@@ -136,14 +136,13 @@ class Lord:
 					wandb.Video(np.array(visualized_imgs)),
 				]}, step=epoch)
 
-	def train_amortized(self, imgs, classes, model_dir, tensorboard_dir):
+	def train_amortized(self, imgs, classes, model_dir):
 		self.amortized_model = AmortizedModel(self.config)
-		self.amortized_model.modulation.load_state_dict(self.latent_model.modulation.state_dict())
-		self.amortized_model.generator.load_state_dict(self.latent_model.generator.state_dict())
+		self.amortized_model.decoder.load_state_dict(self.latent_model.decoder.state_dict())
 
 		data = dict(
 			img=torch.from_numpy(imgs).permute(0, 3, 1, 2),
-			img_id=torch.from_numpy(np.arange(imgs.shape[0])),
+			img_id=torch.arange(imgs.shape[0]).type(torch.int64),
 			class_id=torch.from_numpy(classes.astype(np.int64))
 		)
 
@@ -172,7 +171,7 @@ class Lord:
 			eta_min=self.config['train_encoders']['learning_rate']['min']
 		)
 
-		summary = SummaryWriter(log_dir=tensorboard_dir)
+		visualized_imgs = []
 
 		train_loss = AverageMeter()
 		for epoch in range(self.config['train_encoders']['n_epochs']):
@@ -185,7 +184,7 @@ class Lord:
 			for batch in pbar:
 				batch = {name: tensor.to(self.device) for name, tensor in batch.items()}
 
-				optimizer.zero_grad()
+				optimizer.zero_grad(set_to_none=True)
 
 				target_content_code = self.latent_model.content_embedding(batch['img_id'])
 				target_class_code = self.latent_model.class_embedding(batch['class_id'])
@@ -193,7 +192,7 @@ class Lord:
 				out = self.amortized_model(batch['img'])
 
 				loss_reconstruction = reconstruction_criterion(out['img'], batch['img'])
-				loss_content = embedding_criterion(out['content_code'], target_content_code)
+				loss_content = embedding_criterion(out['content_code'].reshape(target_content_code.shape), target_content_code)
 				loss_class = embedding_criterion(out['class_code'], target_class_code)
 
 				loss = loss_reconstruction + 10 * loss_content + 10 * loss_class
@@ -209,18 +208,24 @@ class Lord:
 			pbar.close()
 			self.save(model_dir, latent=False, amortized=True)
 
-			summary.add_scalar(tag='loss-amortized', scalar_value=loss.item(), global_step=epoch)
-			summary.add_scalar(tag='rec-loss-amortized', scalar_value=loss_reconstruction.item(), global_step=epoch)
-			summary.add_scalar(tag='content-loss-amortized', scalar_value=loss_content.item(), global_step=epoch)
-			summary.add_scalar(tag='class-loss-amortized', scalar_value=loss_class.item(), global_step=epoch)
+			wandb.log({
+				'loss-amortized': loss.item(),
+				'rec-loss-amortized': loss_reconstruction.item(),
+				'content-loss-amortized': loss_content.item(),
+				'class-loss-amortized': loss_class.item(),
 
-			fixed_sample_img = self.generate_samples_amortized(dataset, randomized=False)
-			random_sample_img = self.generate_samples_amortized(dataset, randomized=True)
+			}, step=epoch)
 
-			summary.add_image(tag='sample-fixed-amortized', img_tensor=fixed_sample_img, global_step=epoch)
-			summary.add_image(tag='sample-random-amortized', img_tensor=random_sample_img, global_step=epoch)
+			with torch.no_grad():
+				fixed_sample_img = self.generate_samples_amortized(dataset, step=epoch)
 
-		summary.close()
+			wandb.log({f'generated-{epoch}': [wandb.Image(fixed_sample_img)]}, step=epoch)
+			visualized_imgs.append(np.asarray(fixed_sample_img).transpose(2,0,1)[:3])
+
+			if epoch % 5 == 0:
+				wandb.log({f'video': [
+					wandb.Video(np.array(visualized_imgs)),
+				]}, step=epoch)
 
 	def generate_samples(self, dataset, n_samples=4, step=None):
 		self.latent_model.eval()
@@ -267,7 +272,52 @@ class Lord:
 		pil_img = Image.open(buf)
 		return pil_img
 
-	def generate_samples_amortized(self, dataset, n_samples=5, randomized=False):
+	def generate_samples_amortized(self, dataset, n_samples=4, step=None):
+		self.amortized_model.eval()
+
+		img_idx = torch.from_numpy(np.random.RandomState(seed=1234).choice(len(dataset), size=n_samples, replace=False).astype(np.int64))
+
+		samples = dataset[img_idx]
+		samples = {name: tensor.to(self.device) for name, tensor in samples.items()}
+		fig = plt.figure(figsize=(10, 10))
+		if step:
+			fig.suptitle(f'Step={step}')
+		for i in range(n_samples):
+			# Plot row headers (speaker)
+			plt.subplot(n_samples + 1, n_samples + 1,
+						n_samples + 1 + i * (n_samples + 1) + 1)
+			plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
+			plt.gca().invert_yaxis()
+			plt.axis('off')
+
+			# Plot column headers (content)
+			plt.subplot(n_samples + 1, n_samples + 1, i + 2)
+			plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
+			plt.gca().invert_yaxis()
+			plt.axis('off')
+
+			for j in range(n_samples):
+				plt.subplot(n_samples + 1, n_samples + 1,
+							n_samples + 2 + i * (n_samples + 1) + j + 1)
+
+				content_img = samples['img'][[j]]
+				class_img = samples['img'][[i]]
+				cvt = self.amortized_model.convert(content_img, class_img)['img'][0].detach().cpu().numpy()
+
+				if step % 5 == 0:
+					np.savez(f'samples/e{step}_{samples["img_id"][[j]].item()}({samples["class_id"][[j]].item()})to{samples["class_id"][[i]].item()}.npz', cvt)
+
+				plt.imshow(cvt, cmap='inferno')
+				plt.gca().invert_yaxis()
+				plt.axis('off')
+
+		buf = io.BytesIO()
+		plt.savefig(buf, format='png')
+		buf.seek(0)
+		pil_img = Image.open(buf)
+		return pil_img
+
+	def generate_samples_amortized_old(self, dataset, n_samples=5, randomized=False):
 		self.amortized_model.eval()
 
 		if randomized:

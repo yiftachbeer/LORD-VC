@@ -9,6 +9,18 @@ base_config = dict(
 	n_adain_layers=4,
 	adain_dim=256,
 
+	# decoder params
+	c_in=128,
+	c_cond=128,
+	c_h=128,
+	c_out=80,
+	kernel_size=5,
+	n_conv_blocks=6,
+	upsample=[2, 1, 2, 1, 2, 1],
+	act="relu",
+	sn=False,
+	dropout_rate=0.0,
+
 	perceptual_loss=dict(
 		layers=[2, 7, 12, 21, 30]
 	),

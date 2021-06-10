@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
-from model.adain_vc_model import Decoder
+from model.adain_vc_model import SpeakerEncoder, ContentEncoder, Decoder
 
 
 class LatentModel(nn.Module):
@@ -17,6 +17,17 @@ class LatentModel(nn.Module):
 		self.class_embedding = nn.Embedding(config['n_classes'], config['class_dim'])
 		self.decoder = Decoder(c_in=128, c_cond=128, c_h=128, c_out=80, kernel_size=5, n_conv_blocks=6,
 								upsample=[2, 1, 2, 1, 2, 1], act="relu", sn=False, dropout_rate=0.0)
+		# self.decoder = Decoder(
+		# 	config['c_in'],
+		# 	config['c_cond'],
+		# 	config['c_h'],
+		# 	config['c_out'],
+		# 	config['kernel_size'],
+		# 	config['n_conv_blocks'],
+		# 	config['upsample'],
+		# 	config['act'],
+		# 	config['sn'],
+		# 	config['dropout_rate'])
 
 	def forward(self, img_id, class_id):
 		content_code = self.content_embedding(img_id)
@@ -49,19 +60,40 @@ class AmortizedModel(nn.Module):
 
 		self.config = config
 
-		self.content_encoder = Encoder(config['img_shape'], config['content_dim'])
-		self.class_encoder = Encoder(config['img_shape'], config['class_dim'])
-		self.modulation = Modulation(config['class_dim'], config['n_adain_layers'], config['adain_dim'])
-		self.generator = Generator(config['content_dim'], config['n_adain_layers'], config['adain_dim'], config['img_shape'])
+		self.content_encoder = ContentEncoder(c_in=80,
+											  c_h=128,
+											  c_out=128,
+											  kernel_size=5,
+											  bank_size=8,
+											  bank_scale=1,
+											  c_bank=128,
+											  n_conv_blocks=6,
+											  subsample=[1, 2, 1, 2, 1, 2],
+											  act="relu",
+											  dropout_rate=0.0)
+		self.class_encoder = SpeakerEncoder(c_in=80,
+											  c_h=128,
+											  c_out=128,
+											  kernel_size=5,
+											  bank_size=8,
+											  bank_scale=1,
+											  c_bank=128,
+											  n_conv_blocks=6,
+											  n_dense_blocks=6,
+											  subsample=[1, 2, 1, 2, 1, 2],
+											  act="relu",
+											  dropout_rate=0.0)
+		self.decoder = Decoder(c_in=128, c_cond=128, c_h=128, c_out=80, kernel_size=5, n_conv_blocks=6,
+								upsample=[2, 1, 2, 1, 2, 1], act="relu", sn=False, dropout_rate=0.0)
 
 	def forward(self, img):
 		return self.convert(img, img)
 
 	def convert(self, content_img, class_img):
-		content_code = self.content_encoder(content_img)
-		class_code = self.class_encoder(class_img)
-		class_adain_params = self.modulation(class_code)
-		generated_img = self.generator(content_code, class_adain_params)
+		content_code = self.content_encoder(content_img[:, 0, ...])
+		class_code = self.class_encoder(class_img[:, 0, ...])
+
+		generated_img = self.decoder(content_code, class_code)
 
 		return {
 			'img': generated_img,
@@ -273,8 +305,14 @@ class VGGDistance(nn.Module):
 
 	def forward(self, I1, I2):
 		# To apply VGG on grayscale, we duplicate the single channel
-		if I1.shape[1] == 1:
+		if I1.ndim == 3:
+			I1 = torch.stack((I1, I1, I1), dim=1)
+		elif I1.shape[1] == 1:
 			I1 = torch.cat((I1, I1, I1), dim=1)
+
+		if I2.ndim == 3:
+			I2 = torch.stack((I2, I2, I2), dim=1)
+		elif I2.shape[1] == 1:
 			I2 = torch.cat((I2, I2, I2), dim=1)
 
 		b_sz = I1.size(0)
