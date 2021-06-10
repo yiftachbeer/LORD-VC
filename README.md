@@ -1,26 +1,6 @@
-# LORD
-> [Demystifying Inter-Class Disentanglement](http://www.vision.huji.ac.il/lord)  
-> Aviv Gabbay and Yedid Hoshen  
-> International Conference on Learning Representations (ICLR), 2020.  
-> Pytorch re-implementation (thanks to [@dneuhof](https://github.com/dneuhof)) [[Official tensorflow implementation](https://github.com/avivga/lord)]
-
-## Content transfer between classes
-| Cars3D | SmallNorb | KTH |
-| :---: | :---: | :---: |
-| ![image](http://www.vision.huji.ac.il/lord/img/cars3d/ours.jpg) | ![image](http://www.vision.huji.ac.il/lord/img/smallnorb-poses/ours.png) | ![image](http://www.vision.huji.ac.il/lord/img/kth/ours.png) |
-
-| CelebA |
-| :---: |
-| ![image](http://www.vision.huji.ac.il/lord/img/celeba/ours.png) |
-
-
-## Usage
-### Dependencies
-* python >= 3.6
-* numpy >= 1.15.4
-* pytorch >= 1.3.0
-* opencv >= 3.4.4
-* dlib >= 19.17.0
+# auLORD
+LORD ([Demystifying Inter-Class Disentanglement](http://www.vision.huji.ac.il/lord)) applied to speech audio.
+Also borrows heavily from ([One-shot Voice Conversion by Separating Speaker and Content Representations with Instance Normalization](https://arxiv.org/abs/1904.05742)).
 
 ### Getting started
 Training a model for disentanglement requires several steps.
@@ -66,13 +46,3 @@ lord.py --base-dir <output-root-dir> train-encoders
     --model-name <input-model-name>
 ```
 
-## Citing
-If you find this project useful for your research, please cite
-```
-@inproceedings{gabbay2020lord,
-  author    = {Aviv Gabbay and Yedid Hoshen},
-  title     = {Demystifying Inter-Class Disentanglement},
-  booktitle = {International Conference on Learning Representations (ICLR)},
-  year      = {2020}
-}
-```
