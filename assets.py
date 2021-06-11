@@ -19,10 +19,6 @@ class AssetManager:
 		if not os.path.exists(self.__models_dir):
 			os.mkdir(self.__models_dir)
 
-		self.__tensorboard_dir = os.path.join(self.__cache_dir, 'tensorboard')
-		if not os.path.exists(self.__tensorboard_dir):
-			os.mkdir(self.__tensorboard_dir)
-
 	def get_preprocess_file_path(self, data_name):
 		return os.path.join(self.__preprocess_dir, data_name + '.npz')
 
@@ -34,15 +30,6 @@ class AssetManager:
 
 		self.__recreate_dir(model_dir)
 		return model_dir
-
-	def get_tensorboard_dir(self, model_name):
-		return os.path.join(self.__tensorboard_dir, model_name)
-
-	def recreate_tensorboard_dir(self, model_name):
-		tensorboard_dir = self.get_tensorboard_dir(model_name)
-
-		self.__recreate_dir(tensorboard_dir)
-		return tensorboard_dir
 
 	@staticmethod
 	def __recreate_dir(path):

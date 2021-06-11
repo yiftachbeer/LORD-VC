@@ -13,7 +13,6 @@ from torch import nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 
 import wandb
 
