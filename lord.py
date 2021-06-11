@@ -1,7 +1,5 @@
-import argparse
-
 import numpy as np
-
+import fire
 import wandb
 
 import dataset
@@ -10,158 +8,113 @@ from model.training import Lord
 from config import base_config
 
 
-def preprocess(args):
-	assets = AssetManager(args.base_dir)
+class Main:
 
-	img_dataset = dataset.get_dataset(args.dataset_id, args.dataset_path)
-	imgs, classes, contents = img_dataset.read_images()
-	n_classes = np.unique(classes).size
+	def preprocess(self, base_dir: str, dataset_id: str, data_name: str, dataset_path: str = None):
+		assets = AssetManager(base_dir)
 
-	np.savez(
-		file=assets.get_preprocess_file_path(args.data_name),
-		imgs=imgs, classes=classes, contents=contents, n_classes=n_classes
-	)
+		img_dataset = dataset.get_dataset(dataset_id, dataset_path)
+		imgs, classes, contents = img_dataset.read_images()
+		n_classes = np.unique(classes).size
 
-
-def split_classes(args):
-	assets = AssetManager(args.base_dir)
-
-	data = np.load(assets.get_preprocess_file_path(args.input_data_name))
-	imgs, classes, contents = data['imgs'], data['classes'], data['contents']
-
-	n_classes = np.unique(classes).size
-	test_classes = np.random.choice(n_classes, size=args.num_test_classes, replace=False)
-
-	test_idx = np.isin(classes, test_classes)
-	train_idx = ~np.isin(classes, test_classes)
-
-	np.savez(
-		file=assets.get_preprocess_file_path(args.test_data_name),
-		imgs=imgs[test_idx], classes=classes[test_idx], contents=contents[test_idx], n_classes=n_classes
-	)
-
-	np.savez(
-		file=assets.get_preprocess_file_path(args.train_data_name),
-		imgs=imgs[train_idx], classes=classes[train_idx], contents=contents[train_idx], n_classes=n_classes
-	)
-
-
-def split_samples(args):
-	assets = AssetManager(args.base_dir)
-
-	data = np.load(assets.get_preprocess_file_path(args.input_data_name))
-	imgs, classes, contents = data['imgs'], data['classes'], data['contents']
-
-	n_classes = np.unique(classes).size
-	n_samples = imgs.shape[0]
-
-	n_test_samples = int(n_samples * args.test_split)
-
-	test_idx = np.random.choice(n_samples, size=n_test_samples, replace=False)
-	train_idx = ~np.isin(np.arange(n_samples), test_idx)
-
-	np.savez(
-		file=assets.get_preprocess_file_path(args.test_data_name),
-		imgs=imgs[test_idx], classes=classes[test_idx], contents=contents[test_idx], n_classes=n_classes
-	)
-
-	np.savez(
-		file=assets.get_preprocess_file_path(args.train_data_name),
-		imgs=imgs[train_idx], classes=classes[train_idx], contents=contents[train_idx], n_classes=n_classes
-	)
-
-
-def train(args):
-	assets = AssetManager(args.base_dir)
-	model_dir = assets.recreate_model_dir(args.model_name)
-
-	data = np.load(assets.get_preprocess_file_path(args.data_name))
-	imgs = data['imgs']
-
-	config = dict(
-		img_shape=imgs.shape[1:],
-		n_imgs=imgs.shape[0],
-		n_classes=data['n_classes'].item(),
-	)
-
-	config.update(base_config)
-
-	lord = Lord(config)
-
-	with wandb.init(config=config):
-		lord.train_latent(
-			imgs=imgs,
-			classes=data['classes'],
-			model_dir=model_dir,
+		np.savez(
+			file=assets.get_preprocess_file_path(data_name),
+			imgs=imgs, classes=classes, contents=contents, n_classes=n_classes
 		)
 
-	print('Saving...')
-	lord.save(model_dir, latent=True, amortized=False)
-	print('Saved.')
+	def split_classes(self, base_dir: str, input_data_name: str, train_data_name: str, test_data_name: str,
+					  num_test_classes: int):
+		assets = AssetManager(base_dir)
 
+		data = np.load(assets.get_preprocess_file_path(input_data_name))
+		imgs, classes, contents = data['imgs'], data['classes'], data['contents']
 
-def train_encoders(args):
-	assets = AssetManager(args.base_dir)
-	model_dir = assets.get_model_dir(args.model_name)
+		n_classes = np.unique(classes).size
+		test_classes = np.random.choice(n_classes, size=num_test_classes, replace=False)
 
-	data = np.load(assets.get_preprocess_file_path(args.data_name))
-	imgs = data['imgs']
+		test_idx = np.isin(classes, test_classes)
+		train_idx = ~np.isin(classes, test_classes)
 
-	lord = Lord()
-	lord.load(model_dir, latent=True, amortized=False)
-
-	with wandb.init(config=lord.config):
-		lord.train_amortized(
-			imgs=imgs,
-			classes=data['classes'],
-			model_dir=model_dir
+		np.savez(
+			file=assets.get_preprocess_file_path(test_data_name),
+			imgs=imgs[test_idx], classes=classes[test_idx], contents=contents[test_idx], n_classes=n_classes
 		)
 
-	print('Saving...')
-	lord.save(model_dir, latent=False, amortized=True)
-	print('Saved.')
+		np.savez(
+			file=assets.get_preprocess_file_path(train_data_name),
+			imgs=imgs[train_idx], classes=classes[train_idx], contents=contents[train_idx], n_classes=n_classes
+		)
 
+	def split_samples(self, base_dir: str, input_data_name: str, train_data_name: str, test_data_name: str,
+					  test_split: float):
+		assets = AssetManager(base_dir)
 
-def main():
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-bd', '--base-dir', type=str, required=True)
+		data = np.load(assets.get_preprocess_file_path(input_data_name))
+		imgs, classes, contents = data['imgs'], data['classes'], data['contents']
 
-	action_parsers = parser.add_subparsers(dest='action')
-	action_parsers.required = True
+		n_classes = np.unique(classes).size
+		n_samples = imgs.shape[0]
 
-	preprocess_parser = action_parsers.add_parser('preprocess')
-	preprocess_parser.add_argument('-di', '--dataset-id', type=str, choices=dataset.supported_datasets, required=True)
-	preprocess_parser.add_argument('-dp', '--dataset-path', type=str, required=False)
-	preprocess_parser.add_argument('-dn', '--data-name', type=str, required=True)
-	preprocess_parser.set_defaults(func=preprocess)
+		n_test_samples = int(n_samples * test_split)
 
-	split_classes_parser = action_parsers.add_parser('split-classes')
-	split_classes_parser.add_argument('-idn', '--input-data-name', type=str, required=True)
-	split_classes_parser.add_argument('-trdn', '--train-data-name', type=str, required=True)
-	split_classes_parser.add_argument('-tsdn', '--test-data-name', type=str, required=True)
-	split_classes_parser.add_argument('-ntsi', '--num-test-classes', type=int, required=True)
-	split_classes_parser.set_defaults(func=split_classes)
+		test_idx = np.random.choice(n_samples, size=n_test_samples, replace=False)
+		train_idx = ~np.isin(np.arange(n_samples), test_idx)
 
-	split_samples_parser = action_parsers.add_parser('split-samples')
-	split_samples_parser.add_argument('-idn', '--input-data-name', type=str, required=True)
-	split_samples_parser.add_argument('-trdn', '--train-data-name', type=str, required=True)
-	split_samples_parser.add_argument('-tsdn', '--test-data-name', type=str, required=True)
-	split_samples_parser.add_argument('-ts', '--test-split', type=float, required=True)
-	split_samples_parser.set_defaults(func=split_samples)
+		np.savez(
+			file=assets.get_preprocess_file_path(test_data_name),
+			imgs=imgs[test_idx], classes=classes[test_idx], contents=contents[test_idx], n_classes=n_classes
+		)
 
-	train_parser = action_parsers.add_parser('train')
-	train_parser.add_argument('-dn', '--data-name', type=str, required=True)
-	train_parser.add_argument('-mn', '--model-name', type=str, required=True)
-	train_parser.set_defaults(func=train)
+		np.savez(
+			file=assets.get_preprocess_file_path(train_data_name),
+			imgs=imgs[train_idx], classes=classes[train_idx], contents=contents[train_idx], n_classes=n_classes
+		)
 
-	train_encoders_parser = action_parsers.add_parser('train-encoders')
-	train_encoders_parser.add_argument('-dn', '--data-name', type=str, required=True)
-	train_encoders_parser.add_argument('-mn', '--model-name', type=str, required=True)
-	train_encoders_parser.set_defaults(func=train_encoders)
+	def train(self, base_dir: str, data_name: str, model_name: str):
+		assets = AssetManager(base_dir)
+		model_dir = assets.recreate_model_dir(model_name)
 
-	args = parser.parse_args()
-	args.func(args)
+		data = np.load(assets.get_preprocess_file_path(data_name))
+		imgs = data['imgs']
+
+		config = dict(
+			img_shape=imgs.shape[1:],
+			n_imgs=imgs.shape[0],
+			n_classes=data['n_classes'].item(),
+		)
+
+		config.update(base_config)
+
+		lord = Lord(config)
+
+		with wandb.init(config=config):
+			lord.train_latent(
+				imgs=imgs,
+				classes=data['classes'],
+				model_dir=model_dir,
+			)
+
+		lord.save(model_dir, latent=True, amortized=False)
+
+	def train_encoders(self, base_dir: str, data_name: str, model_name: str):
+		assets = AssetManager(base_dir)
+		model_dir = assets.get_model_dir(model_name)
+
+		data = np.load(assets.get_preprocess_file_path(data_name))
+		imgs = data['imgs']
+
+		lord = Lord()
+		lord.load(model_dir, latent=True, amortized=False)
+
+		with wandb.init(config=lord.config):
+			lord.train_amortized(
+				imgs=imgs,
+				classes=data['classes'],
+				model_dir=model_dir
+			)
+
+		lord.save(model_dir, latent=False, amortized=True)
 
 
 if __name__ == '__main__':
-	main()
+	fire.Fire(Main())
