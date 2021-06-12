@@ -315,29 +315,3 @@ class Lord:
 		buf.seek(0)
 		pil_img = Image.open(buf)
 		return pil_img
-
-	def generate_samples_amortized_old(self, dataset, n_samples=5, randomized=False):
-		self.amortized_model.eval()
-
-		if randomized:
-			random = np.random
-		else:
-			random = np.random.RandomState(seed=1234)
-
-		img_idx = torch.from_numpy(random.choice(len(dataset), size=n_samples, replace=False))
-
-		samples = dataset[img_idx]
-		samples = {name: tensor.to(self.device) for name, tensor in samples.items()}
-
-		blank = torch.ones_like(samples['img'][0])
-		output = [torch.cat([blank] + list(samples['img']), dim=2)]
-		for i in range(n_samples):
-			converted_imgs = [samples['img'][i]]
-
-			for j in range(n_samples):
-				out = self.amortized_model.convert(samples['img'][[j]], samples['img'][[i]])
-				converted_imgs.append(out['img'][0])
-
-			output.append(torch.cat(converted_imgs, dim=2))
-
-		return torch.cat(output, dim=1)
