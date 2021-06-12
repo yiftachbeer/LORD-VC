@@ -25,7 +25,7 @@ def main(data_dir: str, save_dest: str, segment: int = 128):
     classes = []
     file_names = []
 
-    for i_spk, spk in tqdm(enumerate(sorted(os.listdir(data_dir)))):
+    for i_spk, spk in enumerate(tqdm(sorted(os.listdir(data_dir)))):
         for wav_file in sorted((Path(data_dir) / spk).rglob('*mic2.flac')):
             mel = process_files(wav_file, wav2mel)
             if mel is not None and mel.shape[-1] > segment:
