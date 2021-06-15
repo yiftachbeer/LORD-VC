@@ -26,7 +26,7 @@ base_config = dict(
 	),
 
 	train=dict(
-		batch_size=32,
+		batch_size=16,
 		n_epochs=200,
 
 		learning_rate=dict(

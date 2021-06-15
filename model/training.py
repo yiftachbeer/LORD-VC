@@ -72,6 +72,8 @@ class Lord:
 		self.latent_model.to(self.device)
 
 		criterion = VGGDistance(self.config['perceptual_loss']['layers']).to(self.device)
+		dvector = torch.jit.load('pretrained/dvector.pt', map_location=self.device)
+		cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
 
 		optimizer = Adam([
 			{
@@ -105,7 +107,10 @@ class Lord:
 				out = self.latent_model(batch['img_id'], batch['class_id'])
 
 				content_penalty = torch.sum(out['content_code'] ** 2, dim=1).mean()
-				loss = criterion(out['img'][:, None, ...], batch['img']) + self.config['content_decay'] * content_penalty
+				dvector_orig = dvector(batch['img'][:, 0, ...].transpose(1, 2))
+				dvector_const = dvector(out['img'].transpose(1, 2))
+				speaker_loss = -cos_sim(dvector_orig, dvector_const).sum()
+				loss = criterion(out['img'][:, None, ...], batch['img']) + self.config['content_decay'] * content_penalty + speaker_loss
 
 				loss.backward()
 				optimizer.step()
@@ -267,6 +272,7 @@ class Lord:
 
 		buf = io.BytesIO()
 		plt.savefig(buf, format='png')
+		plt.show()
 		buf.seek(0)
 		pil_img = Image.open(buf)
 		return pil_img
