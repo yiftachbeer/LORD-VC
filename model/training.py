@@ -109,7 +109,7 @@ class Lord:
 				content_penalty = torch.sum(out['content_code'] ** 2, dim=1).mean()
 				dvector_orig = dvector(batch['img'][:, 0, ...].transpose(1, 2))
 				dvector_const = dvector(out['img'].transpose(1, 2))
-				speaker_loss = -cos_sim(dvector_orig, dvector_const).sum()
+				speaker_loss = -cos_sim(dvector_orig, dvector_const).mean()
 				loss = criterion(out['img'][:, None, ...], batch['img']) + self.config['content_decay'] * content_penalty + speaker_loss
 
 				loss.backward()
