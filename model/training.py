@@ -56,7 +56,7 @@ class Lord:
 		self.latent_model = LatentModel(self.config)
 
 		data = dict(
-			img=torch.from_numpy(imgs).permute(0, 3, 1, 2),
+			img=torch.from_numpy(imgs),
 			img_id=torch.arange(imgs.shape[0]).type(torch.int64),
 			class_id=torch.from_numpy(classes.astype(np.int64))
 		)
@@ -145,7 +145,7 @@ class Lord:
 		self.amortized_model.decoder.load_state_dict(self.latent_model.decoder.state_dict())
 
 		data = dict(
-			img=torch.from_numpy(imgs).permute(0, 3, 1, 2),
+			img=torch.from_numpy(imgs),
 			img_id=torch.arange(imgs.shape[0]).type(torch.int64),
 			class_id=torch.from_numpy(classes.astype(np.int64))
 		)

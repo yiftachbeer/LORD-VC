@@ -36,7 +36,7 @@ def main(data_dir: str, save_dest: str, segment: int = 128):
                 file_names.append(str(wav_file))
 
     np.savez(file=save_dest,
-             imgs=np.array(cropped_mels)[..., None],
+             imgs=np.array(cropped_mels)[:, None, ...],  # add channel
              classes=np.array(classes),
              n_classes=np.unique(classes).size,
              file_names=file_names)
