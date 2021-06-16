@@ -36,7 +36,7 @@ class LatentModel(nn.Module):
 		# matching dims from LORD to AdaIN-VC decoder
 		content_code = content_code.reshape((-1, 128, 16))
 
-		generated_img = self.decoder(content_code, class_code)
+		generated_img = self.decoder(content_code, class_code).unsqueeze(1)  # add channel
 
 		return {
 			'img': generated_img,
@@ -90,10 +90,10 @@ class AmortizedModel(nn.Module):
 		return self.convert(img, img)
 
 	def convert(self, content_img, class_img):
-		content_code = self.content_encoder(content_img[:, 0, ...])
-		class_code = self.class_encoder(class_img[:, 0, ...])
+		content_code = self.content_encoder(content_img.unsqueeze(1))
+		class_code = self.class_encoder(class_img.unsqueeze(1))
 
-		generated_img = self.decoder(content_code, class_code)
+		generated_img = self.decoder(content_code, class_code).squeeze(1)  # add channel
 
 		return {
 			'img': generated_img,
@@ -305,15 +305,8 @@ class VGGDistance(nn.Module):
 
 	def forward(self, I1, I2):
 		# To apply VGG on grayscale, we duplicate the single channel
-		if I1.ndim == 3:
-			I1 = torch.stack((I1, I1, I1), dim=1)
-		elif I1.shape[1] == 1:
-			I1 = torch.cat((I1, I1, I1), dim=1)
-
-		if I2.ndim == 3:
-			I2 = torch.stack((I2, I2, I2), dim=1)
-		elif I2.shape[1] == 1:
-			I2 = torch.cat((I2, I2, I2), dim=1)
+		I1 = torch.cat((I1, I1, I1), dim=1)
+		I2 = torch.cat((I2, I2, I2), dim=1)
 
 		b_sz = I1.size(0)
 		f1 = self.vgg(I1)
