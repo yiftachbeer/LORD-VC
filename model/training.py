@@ -123,14 +123,14 @@ class Lord:
 			pbar.close()
 			self.save(model_dir, latent=True, amortized=False)
 
+			with torch.no_grad():
+				fixed_sample_img = self.generate_samples(dataset, step=epoch)
+
 			wandb.log({
 				'loss': train_loss.avg,
 				'decoder_lr': scheduler.get_last_lr()[0],
 				'latent_lr': scheduler.get_last_lr()[1],
 			}, step=epoch)
-
-			with torch.no_grad():
-				fixed_sample_img = self.generate_samples(dataset, step=epoch)
 
 			wandb.log({f'generated-{epoch}': [wandb.Image(fixed_sample_img)]}, step=epoch)
 			visualized_imgs.append(np.asarray(fixed_sample_img).transpose(2,0,1)[:3])

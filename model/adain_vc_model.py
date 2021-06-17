@@ -327,30 +327,3 @@ class Decoder(nn.Module):
             )
         out = self.out_conv_layer(out)
         return out
-
-
-class AdaINVC(nn.Module):
-    def __init__(self, config: Dict):
-        super(AdaINVC, self).__init__()
-        self.speaker_encoder = SpeakerEncoder(**config["SpeakerEncoder"])
-        self.content_encoder = ContentEncoder(**config["ContentEncoder"])
-        self.decoder = Decoder(**config["Decoder"])
-
-    def forward(
-        self, src: Tensor, tgt: Optional[Tensor] = None
-    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        if tgt is None:
-            emb = self.speaker_encoder(src)
-        else:
-            emb = self.speaker_encoder(tgt)
-        mu, log_sigma = self.content_encoder(src)
-        eps = torch.empty_like(log_sigma).normal_(0.0, 1.0)
-        dec = self.decoder(mu + torch.exp(log_sigma / 2.0) * eps, emb)
-        return mu, log_sigma, emb, dec
-
-    @torch.jit.export
-    def inference(self, src: Tensor, tgt: Tensor) -> Tensor:
-        emb = self.speaker_encoder(tgt)
-        mu, _ = self.content_encoder(src)
-        dec = self.decoder(mu, emb)
-        return dec
