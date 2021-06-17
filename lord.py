@@ -8,7 +8,7 @@ import wandb
 import torchaudio
 
 from model.training import Lord
-from config import base_config
+from config import base_config as config
 from model.wav2mel import Wav2Mel
 
 
@@ -38,17 +38,17 @@ class Main:
 				n_classes=np.unique(classes).size,
 				file_names=file_names)
 
-	def train(self, data_path: str, save_path: str):
+	def train(self, data_path: str, save_path: str, **kwargs):
 		data = np.load(data_path)
 		imgs = data['imgs']
 
-		config = dict(
+		config.update(dict(
 			img_shape=imgs.shape[1:],
 			n_imgs=imgs.shape[0],
 			n_classes=data['n_classes'].item(),
-		)
+		))
 
-		config.update(base_config)
+		config.update(kwargs)
 
 		lord = Lord(config)
 
@@ -59,12 +59,14 @@ class Main:
 				model_dir=save_path,
 			)
 
-	def train_encoders(self, data_path: str, model_dir: str):
+	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
 		data = np.load(data_path)
 		imgs = data['imgs']
 
 		lord = Lord()
 		lord.load(model_dir, latent=True, amortized=False)
+
+		lord.config.update(kwargs)
 
 		with wandb.init(config=lord.config):
 			lord.train_amortized(
