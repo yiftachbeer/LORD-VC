@@ -107,8 +107,8 @@ class Lord:
 				out = self.latent_model(batch['img_id'], batch['class_id'])
 
 				content_penalty = torch.sum(out['content_code'] ** 2, dim=1).mean()
-				dvector_orig = dvector(batch['img'][:, 0, ...].transpose(1, 2))
-				dvector_const = dvector(out['img'].transpose(1, 2))
+				dvector_orig = dvector(batch['img'].squeeze(1).transpose(1, 2))
+				dvector_const = dvector(out['img'].squeeze(1).transpose(1, 2))
 				speaker_loss = -cos_sim(dvector_orig, dvector_const).mean()
 				loss = criterion(out['img'], batch['img']) + self.config['content_decay'] * content_penalty + speaker_loss
 
@@ -261,7 +261,7 @@ class Lord:
 
 				content_id = samples['img_id'][[j]]
 				class_id = samples['class_id'][[i]]
-				cvt = self.latent_model(content_id, class_id)['img'][0].detach().cpu().numpy()
+				cvt = self.latent_model(content_id, class_id)['img'].squeeze().detach().cpu().numpy()
 
 				if step % 5 == 0:
 					np.savez(f'samples/{step}_{content_id.item()}({samples["class_id"][[j]].item()})to{class_id.item()}.npz', cvt)
@@ -272,7 +272,6 @@ class Lord:
 
 		buf = io.BytesIO()
 		plt.savefig(buf, format='png')
-		plt.show()
 		buf.seek(0)
 		pil_img = Image.open(buf)
 		return pil_img
@@ -307,7 +306,7 @@ class Lord:
 
 				content_img = samples['img'][[j]]
 				class_img = samples['img'][[i]]
-				cvt = self.amortized_model.convert(content_img, class_img)['img'][0].detach().cpu().numpy()
+				cvt = self.amortized_model.convert(content_img, class_img)['img'].squeeze().detach().cpu().numpy()
 
 				if step % 5 == 0:
 					np.savez(f'samples/e{step}_{samples["img_id"][[j]].item()}({samples["class_id"][[j]].item()})to{samples["class_id"][[i]].item()}.npz', cvt)
