@@ -56,10 +56,10 @@ class AmortizedModel(nn.Module):
 		return self.convert(img, img)
 
 	def convert(self, content_img, class_img):
-		content_code = self.content_encoder(content_img.unsqueeze(1))
-		class_code = self.class_encoder(class_img.unsqueeze(1))
+		content_code = self.content_encoder(content_img.squeeze(1))
+		class_code = self.class_encoder(class_img.squeeze(1))
 
-		generated_img = self.decoder(content_code, class_code).squeeze(1)  # add channel
+		generated_img = self.decoder(content_code, class_code).unsqueeze(1)  # add channel
 
 		return {
 			'img': generated_img,
