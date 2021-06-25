@@ -4,11 +4,12 @@ from tqdm.auto import tqdm
 import numpy as np
 import fire
 import wandb
+import soundfile as sf
 
 import torch
 import torchaudio
 
-from model.training import Lord
+from model.training import train_latent, train_amortized
 from config import base_config as config
 from model.wav2mel import Wav2Mel
 from model.modules import LatentModel, AmortizedModel
@@ -56,8 +57,7 @@ class Main:
 
 		for i_spk, spk in enumerate(tqdm(sorted(Path(data_dir).glob('*')))):
 			for wav_file in sorted(spk.rglob('*mic2.flac')):
-				speech_tensor, sample_rate = torchaudio.load(wav_file)
-				mel = wav2mel(speech_tensor, sample_rate)
+				mel = wav2mel(*torchaudio.load(wav_file))
 				if mel is not None and mel.shape[-1] > segment:
 					start = mel.shape[-1] // 2 - segment // 2
 
@@ -83,10 +83,12 @@ class Main:
 
 		update_nested(config, kwargs)
 
-		lord = Lord(config)
+		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		with wandb.init(config=config):
 			save_config(config, save_path)
-			lord.train_latent(
+			train_latent(
+				config=config,
+				device=device,
 				imgs=imgs,
 				classes=data['classes'],
 				model_dir=Path(save_path),
@@ -104,26 +106,58 @@ class Main:
 
 		update_nested(config, kwargs)
 
-		lord = Lord(config)
-		lord.latent_model = LatentModel(config)
-		lord.latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.pth'))
+		latent_model = LatentModel(config)
+		latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.pth'))
 
-		update_nested(lord.config, kwargs)
-
+		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		with wandb.init(config=config):
 			save_config(config, model_dir)
-			lord.train_amortized(
+			train_amortized(
+				config=config,
+				device=device,
+				latent_model=latent_model,
 				imgs=imgs,
 				classes=data['classes'],
 				model_dir=Path(model_dir)
 			)
 
-	def convert(self, model_dir):
-		self.amortized_model = AmortizedModel(self.config)
-		self.amortized_model.load_state_dict(torch.load(model_dir / 'amortized.pth'))
+	def convert(self, data_path, model_dir, content_file_path: str, speaker_file_path: str, output_path: str,
+				vocoder_path: str = r"pretrained\vocoder.pth", **kwargs):
+		data = np.load(data_path)
+		imgs = data['imgs']
 
-		# TODO
-		raise NotImplemented
+		config.update(dict(
+			img_shape=imgs.shape[1:],
+			n_imgs=imgs.shape[0],
+			n_classes=data['n_classes'].item(),
+		))
+
+		update_nested(config, kwargs)
+
+		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+		wav2mel = Wav2Mel()
+
+		amortized_model = AmortizedModel(config)
+		amortized_model.load_state_dict(torch.load(model_dir / 'amortized.pth'))
+		amortized_model.to(device)
+		amortized_model.eval()
+
+		vocoder = torch.jit.load(vocoder_path, map_location=device)
+		vocoder.to(device)
+		vocoder.eval()
+
+		with torch.no_grad():
+			content_mel = wav2mel(*torchaudio.load(content_file_path)).to(device)
+			speaker_mel = wav2mel(*torchaudio.load(speaker_file_path)).to(device)
+
+			converted_mel = amortized_model.convert(
+				content_img=content_mel[None, None, ...],
+				class_img=speaker_mel[None, None, ...]
+			)['img']
+
+			wav = vocoder.generate([converted_mel.squeeze(0).T])[0]
+			sf.write(output_path, wav.data.cpu().numpy(), 16000)
 
 
 if __name__ == '__main__':
