@@ -1,6 +1,6 @@
-import os
 import itertools
 import pickle
+from pathlib import Path
 from tqdm import tqdm
 
 import numpy as np
@@ -30,27 +30,27 @@ class Lord:
 		self.latent_model = None
 		self.amortized_model = None
 
-	def load(self, model_dir, latent=True, amortized=True):
-		with open(os.path.join(model_dir, 'config.pkl'), 'rb') as config_fd:
+	def load(self, model_dir: Path, latent=True, amortized=True):
+		with open(model_dir / 'config.pkl', 'rb') as config_fd:
 			self.config = pickle.load(config_fd)
 
 		if latent:
 			self.latent_model = LatentModel(self.config)
-			self.latent_model.load_state_dict(torch.load(os.path.join(model_dir, 'latent.pth')))
+			self.latent_model.load_state_dict(torch.load(model_dir / 'latent.pth'))
 
 		if amortized:
 			self.amortized_model = AmortizedModel(self.config)
-			self.amortized_model.load_state_dict(torch.load(os.path.join(model_dir, 'amortized.pth')))
+			self.amortized_model.load_state_dict(torch.load(model_dir / 'amortized.pth'))
 
-	def save(self, model_dir, latent=True, amortized=True):
-		with open(os.path.join(model_dir, 'config.pkl'), 'wb') as config_fd:
+	def save(self, model_dir: Path, latent=True, amortized=True):
+		with open(model_dir / 'config.pkl', 'wb') as config_fd:
 			pickle.dump(self.config, config_fd)
 
 		if latent:
-			torch.save(self.latent_model.state_dict(), os.path.join(model_dir, 'latent.pth'))
+			torch.save(self.latent_model.state_dict(), model_dir / 'latent.pth')
 
 		if amortized:
-			torch.save(self.amortized_model.state_dict(), os.path.join(model_dir, 'amortized.pth'))
+			torch.save(self.amortized_model.state_dict(), model_dir / 'amortized.pth')
 
 	def train_latent(self, imgs, classes, model_dir):
 		self.latent_model = LatentModel(self.config)

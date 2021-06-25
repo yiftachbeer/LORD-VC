@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from tqdm.auto import tqdm
 import numpy as np
@@ -45,7 +44,7 @@ class Main:
 		classes = []
 		file_names = []
 
-		for i_spk, spk in enumerate(tqdm(sorted(os.listdir(data_dir)))):
+		for i_spk, spk in enumerate(tqdm(sorted(Path(data_dir).glob('*')))):
 			for wav_file in sorted((Path(data_dir) / spk).rglob('*mic2.flac')):
 				speech_tensor, sample_rate = torchaudio.load(wav_file)
 				mel = wav2mel(speech_tensor, sample_rate)
@@ -88,7 +87,7 @@ class Main:
 		imgs = data['imgs']
 
 		lord = Lord()
-		lord.load(model_dir, latent=True, amortized=False)
+		lord.load(Path(model_dir), latent=True, amortized=False)
 
 		update_nested(lord.config, kwargs)
 
