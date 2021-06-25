@@ -54,7 +54,7 @@ class Main:
 		classes = []
 		file_names = []
 
-		for i_spk, spk in enumerate(tqdm(sorted(Path(data_dir).glob('*/*')))):
+		for i_spk, spk in enumerate(tqdm(sorted(Path(data_dir).glob('*')))):
 			for wav_file in sorted(spk.rglob('*mic2.flac')):
 				speech_tensor, sample_rate = torchaudio.load(wav_file)
 				mel = wav2mel(speech_tensor, sample_rate)
