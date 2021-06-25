@@ -12,6 +12,30 @@ from config import base_config as config
 from model.wav2mel import Wav2Mel
 
 
+def update_nested(d1: dict, d2: dict):
+	"""
+	Update d1, that might have nested dictionaries with the items of d2.
+	Nested keys in d2 should be separated with a '/' character.
+	Example:
+	>> d1 = {'a': {'b': 1, 'c': 2}}
+	>> d2 = {'a/b': 3, 'd': 4}
+	>> update_nested(d1, d2)
+	d1 = {'a': {'b': 3, 'c': 2}, 'd': 4}
+
+	:param d1: The dict to update.
+	:param d2: The values to update with.
+	:return: The updated dict.
+	"""
+	for key, val in d2.items():
+		key_path = key.split('/')
+		curr_d = d1
+		for key in key_path[:-1]:
+			curr_d = curr_d[key]
+		curr_d[key_path[-1]] = val
+
+	return d1
+
+
 class Main:
 
 	def preprocess(self, data_dir: str, save_dest: str, segment: int = 128):
@@ -48,7 +72,7 @@ class Main:
 			n_classes=data['n_classes'].item(),
 		))
 
-		config.update(kwargs)
+		update_nested(config, kwargs)
 
 		lord = Lord(config)
 
@@ -66,7 +90,7 @@ class Main:
 		lord = Lord()
 		lord.load(model_dir, latent=True, amortized=False)
 
-		lord.config.update(kwargs)
+		update_nested(lord.config, kwargs)
 
 		with wandb.init(config=lord.config):
 			lord.train_amortized(
