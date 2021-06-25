@@ -115,7 +115,7 @@ class Main:
 			lord.train_amortized(
 				imgs=imgs,
 				classes=data['classes'],
-				model_dir=model_dir
+				model_dir=Path(model_dir)
 			)
 
 	def convert(self, model_dir):

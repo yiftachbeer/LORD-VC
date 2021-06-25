@@ -30,7 +30,7 @@ class Lord:
 		self.latent_model = None
 		self.amortized_model = None
 
-	def train_latent(self, imgs, classes, model_dir):
+	def train_latent(self, imgs, classes, model_dir: Path):
 		self.latent_model = LatentModel(self.config)
 
 		data = dict(
@@ -119,7 +119,7 @@ class Lord:
 					wandb.Video(np.array(visualized_imgs)),
 				]}, step=epoch)
 
-	def train_amortized(self, imgs, classes, model_dir):
+	def train_amortized(self, imgs, classes, model_dir: Path):
 		self.amortized_model = AmortizedModel(self.config)
 		self.amortized_model.decoder.load_state_dict(self.latent_model.decoder.state_dict())
 
