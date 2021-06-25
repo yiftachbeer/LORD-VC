@@ -212,6 +212,9 @@ class Lord:
 			pbar.close()
 			self.save(model_dir, latent=False, amortized=True)
 
+			with torch.no_grad():
+				fixed_sample_img = self.generate_samples_amortized(dataset, step=epoch)
+
 			wandb.log({
 				'loss-amortized': loss.item(),
 				'rec-loss-amortized': loss_reconstruction.item(),
@@ -219,9 +222,6 @@ class Lord:
 				'class-loss-amortized': loss_class.item(),
 
 			}, step=epoch)
-
-			with torch.no_grad():
-				fixed_sample_img = self.generate_samples_amortized(dataset, step=epoch)
 
 			wandb.log({f'generated-{epoch}': [wandb.Image(fixed_sample_img)]}, step=epoch)
 			visualized_imgs.append(np.asarray(fixed_sample_img).transpose(2,0,1)[:3])
