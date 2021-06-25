@@ -54,8 +54,8 @@ class Main:
 		classes = []
 		file_names = []
 
-		for i_spk, spk in enumerate(tqdm(sorted(Path(data_dir).glob('*')))):
-			for wav_file in sorted((Path(data_dir) / spk).rglob('*mic2.flac')):
+		for i_spk, spk in enumerate(tqdm(sorted(Path(data_dir).glob('*/*')))):
+			for wav_file in sorted(spk.rglob('*mic2.flac')):
 				speech_tensor, sample_rate = torchaudio.load(wav_file)
 				mel = wav2mel(speech_tensor, sample_rate)
 				if mel is not None and mel.shape[-1] > segment:
@@ -82,10 +82,10 @@ class Main:
 		))
 
 		update_nested(config, kwargs)
-		save_config(config, save_path)
 
 		lord = Lord(config)
 		with wandb.init(config=config):
+			save_config(config, save_path)
 			lord.train_latent(
 				imgs=imgs,
 				classes=data['classes'],
@@ -103,17 +103,15 @@ class Main:
 		))
 
 		update_nested(config, kwargs)
-		save_config(config, model_dir)
 
 		lord = Lord(config)
 		lord.latent_model = LatentModel(config)
 		lord.latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.pth'))
 
-		lord.load(Path(model_dir), latent=True, amortized=False)
-
 		update_nested(lord.config, kwargs)
 
-		with wandb.init(config=lord.config):
+		with wandb.init(config=config):
+			save_config(config, model_dir)
 			lord.train_amortized(
 				imgs=imgs,
 				classes=data['classes'],
