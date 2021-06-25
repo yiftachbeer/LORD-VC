@@ -46,7 +46,7 @@ def save_config(config, save_path):
 	wandb.save(str(config_path))
 
 
-class Main:
+class LORD:
 
 	def preprocess(self, data_dir: str, save_dest: str, segment: int = 128):
 		wav2mel = Wav2Mel()
@@ -139,12 +139,11 @@ class Main:
 		wav2mel = Wav2Mel()
 
 		amortized_model = AmortizedModel(config)
-		amortized_model.load_state_dict(torch.load(model_dir / 'amortized.pth'))
+		amortized_model.load_state_dict(torch.load(Path(model_dir) / 'amortized.pth'))
 		amortized_model.to(device)
 		amortized_model.eval()
 
 		vocoder = torch.jit.load(vocoder_path, map_location=device)
-		vocoder.to(device)
 		vocoder.eval()
 
 		with torch.no_grad():
@@ -156,9 +155,9 @@ class Main:
 				class_img=speaker_mel[None, None, ...]
 			)['img']
 
-			wav = vocoder.generate([converted_mel.squeeze(0).T])[0]
+			wav = vocoder.generate([converted_mel[0, 0].T])[0]
 			sf.write(output_path, wav.data.cpu().numpy(), 16000)
 
 
 if __name__ == '__main__':
-	fire.Fire(Main())
+	fire.Fire(LORD())
