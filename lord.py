@@ -1,14 +1,17 @@
+import pickle
 from pathlib import Path
 from tqdm.auto import tqdm
 import numpy as np
 import fire
 import wandb
 
+import torch
 import torchaudio
 
 from model.training import Lord
 from config import base_config as config
 from model.wav2mel import Wav2Mel
+from model.modules import LatentModel, AmortizedModel
 
 
 def update_nested(d1: dict, d2: dict):
@@ -33,6 +36,13 @@ def update_nested(d1: dict, d2: dict):
 		curr_d[key_path[-1]] = val
 
 	return d1
+
+
+def save_config(config, save_path):
+	config_path = Path(save_path) / 'config.pkl'
+	with open(config_path, 'wb') as config_fd:
+		pickle.dump(config, config_fd)
+	wandb.save(str(config_path))
 
 
 class Main:
@@ -72,21 +82,33 @@ class Main:
 		))
 
 		update_nested(config, kwargs)
+		save_config(config, save_path)
 
 		lord = Lord(config)
-
 		with wandb.init(config=config):
 			lord.train_latent(
 				imgs=imgs,
 				classes=data['classes'],
-				model_dir=save_path,
+				model_dir=Path(save_path),
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
 		data = np.load(data_path)
 		imgs = data['imgs']
 
-		lord = Lord()
+		config.update(dict(
+			img_shape=imgs.shape[1:],
+			n_imgs=imgs.shape[0],
+			n_classes=data['n_classes'].item(),
+		))
+
+		update_nested(config, kwargs)
+		save_config(config, model_dir)
+
+		lord = Lord(config)
+		lord.latent_model = LatentModel(config)
+		lord.latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.pth'))
+
 		lord.load(Path(model_dir), latent=True, amortized=False)
 
 		update_nested(lord.config, kwargs)
@@ -97,6 +119,13 @@ class Main:
 				classes=data['classes'],
 				model_dir=model_dir
 			)
+
+	def convert(self, model_dir):
+		self.amortized_model = AmortizedModel(self.config)
+		self.amortized_model.load_state_dict(torch.load(model_dir / 'amortized.pth'))
+
+		# TODO
+		raise NotImplemented
 
 
 if __name__ == '__main__':
