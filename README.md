@@ -1,5 +1,5 @@
-# auLORD
-LORD ([Demystifying Inter-Class Disentanglement](http://www.vision.huji.ac.il/lord)) applied to speech audio.
+# LORD-VC
+An adaptation of LORD ([Demystifying Inter-Class Disentanglement](http://www.vision.huji.ac.il/lord)) to speech audio.
 Also borrows heavily from ([One-shot Voice Conversion by Separating Speaker and Content Representations with Instance Normalization](https://arxiv.org/abs/1904.05742)).
 
 ### Getting started
