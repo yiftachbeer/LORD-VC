@@ -3,9 +3,6 @@ from pathlib import Path
 from tqdm import tqdm
 
 import numpy as np
-import matplotlib.pyplot as plt
-import io
-from PIL import Image
 
 import torch
 from torch import nn
@@ -16,10 +13,10 @@ from torch.utils.data import DataLoader
 import wandb
 
 from model.lord import LatentModel, AmortizedModel, VGGDistance
-from model.utils import AverageMeter, NamedTensorDataset
+from utils import AverageMeter, NamedTensorDataset
 
 
-def train_latent(config, device, imgs, classes, model_dir: Path):
+def train_latent(config, device, imgs, classes, model_dir: Path, callback):
 	latent_model = LatentModel(config)
 
 	data = dict(
@@ -59,8 +56,6 @@ def train_latent(config, device, imgs, classes, model_dir: Path):
 		eta_min=config['train']['learning_rate']['min']
 	)
 
-	visualized_imgs = []
-
 	train_loss = AverageMeter()
 	for epoch in range(config['train']['n_epochs']):
 		latent_model.train()
@@ -91,8 +86,7 @@ def train_latent(config, device, imgs, classes, model_dir: Path):
 		torch.save(latent_model.state_dict(), model_dir / 'latent.pth')
 		wandb.save(str(model_dir / 'latent.pth'))
 
-		with torch.no_grad():
-			fixed_sample_img = generate_samples(latent_model, device, dataset, step=epoch)
+		callback.generate_samples(latent_model, dataset, epoch)
 
 		wandb.log({
 			'loss': train_loss.avg,
@@ -100,16 +94,8 @@ def train_latent(config, device, imgs, classes, model_dir: Path):
 			'latent_lr': scheduler.get_last_lr()[1],
 		}, step=epoch)
 
-		wandb.log({f'generated-{epoch}': [wandb.Image(fixed_sample_img)]}, step=epoch)
-		visualized_imgs.append(np.asarray(fixed_sample_img).transpose(2,0,1)[:3])
 
-		if epoch % 5 == 0:
-			wandb.log({f'video': [
-				wandb.Video(np.array(visualized_imgs)),
-			]}, step=epoch)
-
-
-def train_amortized(config, device, latent_model, imgs, classes, model_dir: Path):
+def train_amortized(config, device, latent_model, imgs, classes, model_dir: Path, callback):
 	amortized_model = AmortizedModel(config)
 	amortized_model.decoder.load_state_dict(latent_model.decoder.state_dict())
 
@@ -143,8 +129,6 @@ def train_amortized(config, device, latent_model, imgs, classes, model_dir: Path
 		T_max=config['train_encoders']['n_epochs'] * len(data_loader),
 		eta_min=config['train_encoders']['learning_rate']['min']
 	)
-
-	visualized_imgs = []
 
 	train_loss = AverageMeter()
 	for epoch in range(config['train_encoders']['n_epochs']):
@@ -182,113 +166,12 @@ def train_amortized(config, device, latent_model, imgs, classes, model_dir: Path
 		torch.save(amortized_model.state_dict(), model_dir / 'amortized.pth')
 		wandb.save(str(model_dir / 'amortized.pth'))
 
-		with torch.no_grad():
-			fixed_sample_img = generate_samples_amortized(amortized_model, device, dataset, step=epoch)
+		callback.generate_samples_amortized(amortized_model, dataset, epoch)
 
 		wandb.log({
 			'loss-amortized': loss.item(),
 			'rec-loss-amortized': loss_reconstruction.item(),
 			'content-loss-amortized': loss_content.item(),
 			'class-loss-amortized': loss_class.item(),
-
 		}, step=epoch)
 
-		wandb.log({f'generated-{epoch}': [wandb.Image(fixed_sample_img)]}, step=epoch)
-		visualized_imgs.append(np.asarray(fixed_sample_img).transpose(2,0,1)[:3])
-
-		if epoch % 5 == 0:
-			wandb.log({f'video': [
-				wandb.Video(np.array(visualized_imgs)),
-			]}, step=epoch)
-
-
-def generate_samples(latent_model, device, dataset, n_samples=4, step=None):
-	latent_model.eval()
-
-	img_idx = torch.from_numpy(np.random.RandomState(seed=1234).choice(len(dataset), size=n_samples, replace=False).astype(np.int64))
-
-	samples = dataset[img_idx]
-	samples = {name: tensor.to(device) for name, tensor in samples.items()}
-	fig = plt.figure(figsize=(10, 10))
-	if step:
-		fig.suptitle(f'Step={step}')
-	for i in range(n_samples):
-		# Plot row headers (speaker)
-		plt.subplot(n_samples + 1, n_samples + 1,
-					n_samples + 1 + i * (n_samples + 1) + 1)
-		plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
-		plt.gca().invert_yaxis()
-		plt.axis('off')
-
-		# Plot column headers (content)
-		plt.subplot(n_samples + 1, n_samples + 1, i + 2)
-		plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
-		plt.gca().invert_yaxis()
-		plt.axis('off')
-
-		for j in range(n_samples):
-			plt.subplot(n_samples + 1, n_samples + 1,
-						n_samples + 2 + i * (n_samples + 1) + j + 1)
-
-			content_id = samples['img_id'][[j]]
-			class_id = samples['class_id'][[i]]
-			cvt = latent_model(content_id, class_id)['img'].squeeze().detach().cpu().numpy()
-
-			if step % 5 == 0:
-				np.savez(f'samples/{step}_{content_id.item()}({samples["class_id"][[j]].item()})to{class_id.item()}.npz', cvt)
-
-			plt.imshow(cvt, cmap='inferno')
-			plt.gca().invert_yaxis()
-			plt.axis('off')
-
-	buf = io.BytesIO()
-	plt.savefig(buf, format='png')
-	buf.seek(0)
-	pil_img = Image.open(buf)
-	return pil_img
-
-
-def generate_samples_amortized(amortized_model, device, dataset, n_samples=4, step=None):
-	amortized_model.eval()
-
-	img_idx = torch.from_numpy(np.random.RandomState(seed=1234).choice(len(dataset), size=n_samples, replace=False).astype(np.int64))
-
-	samples = dataset[img_idx]
-	samples = {name: tensor.to(device) for name, tensor in samples.items()}
-	fig = plt.figure(figsize=(10, 10))
-	if step:
-		fig.suptitle(f'Step={step}')
-	for i in range(n_samples):
-		# Plot row headers (speaker)
-		plt.subplot(n_samples + 1, n_samples + 1,
-					n_samples + 1 + i * (n_samples + 1) + 1)
-		plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
-		plt.gca().invert_yaxis()
-		plt.axis('off')
-
-		# Plot column headers (content)
-		plt.subplot(n_samples + 1, n_samples + 1, i + 2)
-		plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
-		plt.gca().invert_yaxis()
-		plt.axis('off')
-
-		for j in range(n_samples):
-			plt.subplot(n_samples + 1, n_samples + 1,
-						n_samples + 2 + i * (n_samples + 1) + j + 1)
-
-			content_img = samples['img'][[j]]
-			class_img = samples['img'][[i]]
-			cvt = amortized_model.convert(content_img, class_img)['img'].squeeze().detach().cpu().numpy()
-
-			if step % 5 == 0:
-				np.savez(f'samples/e{step}_{samples["img_id"][[j]].item()}({samples["class_id"][[j]].item()})to{samples["class_id"][[i]].item()}.npz', cvt)
-
-			plt.imshow(cvt, cmap='inferno')
-			plt.gca().invert_yaxis()
-			plt.axis('off')
-
-	buf = io.BytesIO()
-	plt.savefig(buf, format='png')
-	buf.seek(0)
-	pil_img = Image.open(buf)
-	return pil_img

@@ -9,10 +9,11 @@ import soundfile as sf
 import torch
 import torchaudio
 
-from model.training import train_latent, train_amortized
+from training import train_latent, train_amortized
 from config import base_config as config
 from model.wav2mel import Wav2Mel
 from model.lord import LatentModel, AmortizedModel
+from callbacks import GenerateSamplesCallback
 
 
 def update_nested(d1: dict, d2: dict):
@@ -92,6 +93,7 @@ class Main:
 				imgs=imgs,
 				classes=data['classes'],
 				model_dir=Path(save_path),
+				callback=GenerateSamplesCallback(device),
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
@@ -118,7 +120,8 @@ class Main:
 				latent_model=latent_model,
 				imgs=imgs,
 				classes=data['classes'],
-				model_dir=Path(model_dir)
+				model_dir=Path(model_dir),
+				callback=GenerateSamplesCallback(device)
 			)
 
 	def convert(self, data_path, model_dir, content_file_path: str, speaker_file_path: str, output_path: str,
