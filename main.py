@@ -7,15 +7,14 @@ import wandb
 import soundfile as sf
 
 import torch
-from torch.utils.data import DataLoader
 import torchaudio
 
+from data import get_data
 from training import train_latent, train_amortized
 from config import base_config as config
 from model.wav2mel import Wav2Mel
 from model.adain_vc import get_latent_model, get_autoencoder
 from callbacks import GenerateSamplesLatentCallback, GenerateSamplesAmortizedCallback, SaveModelCallback
-from utils import NamedTensorDataset
 
 
 def update_nested(d1: dict, d2: dict):
@@ -75,28 +74,14 @@ class Main:
 				file_names=file_names)
 
 	def train(self, data_path: str, save_path: str, **kwargs):
-		data = np.load(data_path)
-		imgs = data['imgs']
+		dataset, data_loader, imgs, data = get_data(data_path, config['train']['batch_size'])
 
 		config.update(dict(
 			img_shape=imgs.shape[1:],
 			n_imgs=imgs.shape[0],
 			n_classes=data['n_classes'].item(),
 		))
-
 		update_nested(config, kwargs)
-
-		dataset = NamedTensorDataset(dict(
-			img=torch.from_numpy(imgs),
-			img_id=torch.arange(imgs.shape[0]).type(torch.int64),
-			class_id=torch.from_numpy(data['classes'].astype(np.int64))
-		))
-
-		data_loader = DataLoader(
-			dataset, batch_size=config['train']['batch_size'],
-			shuffle=True, sampler=None, batch_sampler=None,
-			num_workers=1, pin_memory=True, drop_last=True
-		)
 
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		with wandb.init(config=config):
@@ -111,28 +96,14 @@ class Main:
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
-		data = np.load(data_path)
-		imgs = data['imgs']
+		dataset, data_loader, imgs, data = get_data(data_path, config['train_encoders']['batch_size'])
 
 		config.update(dict(
 			img_shape=imgs.shape[1:],
 			n_imgs=imgs.shape[0],
 			n_classes=data['n_classes'].item(),
 		))
-
 		update_nested(config, kwargs)
-
-		dataset = NamedTensorDataset(dict(
-			img=torch.from_numpy(imgs),
-			img_id=torch.arange(imgs.shape[0]).type(torch.int64),
-			class_id=torch.from_numpy(data['classes'].astype(np.int64))
-		))
-
-		data_loader = DataLoader(
-			dataset, batch_size=config['train_encoders']['batch_size'],
-			shuffle=True, sampler=None, batch_sampler=None,
-			num_workers=1, pin_memory=True, drop_last=True
-		)
 
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -160,7 +131,6 @@ class Main:
 			n_imgs=imgs.shape[0],
 			n_classes=data['n_classes'].item(),
 		))
-
 		update_nested(config, kwargs)
 
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
