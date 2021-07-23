@@ -129,7 +129,7 @@ class Main:
 		))
 
 		data_loader = DataLoader(
-			dataset, batch_size=config['train']['batch_size'],
+			dataset, batch_size=config['train_encoders']['batch_size'],
 			shuffle=True, sampler=None, batch_sampler=None,
 			num_workers=1, pin_memory=True, drop_last=True
 		)
