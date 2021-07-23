@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torchvision import models
 
-from model.adain_vc_model import SpeakerEncoder, ContentEncoder, Decoder
+from model.adain_vc import SpeakerEncoder, ContentEncoder, Decoder
 
 
 class LatentModel(nn.Module):

@@ -12,7 +12,7 @@ import torchaudio
 from model.training import train_latent, train_amortized
 from config import base_config as config
 from model.wav2mel import Wav2Mel
-from model.modules import LatentModel, AmortizedModel
+from model.lord import LatentModel, AmortizedModel
 
 
 def update_nested(d1: dict, d2: dict):
@@ -46,7 +46,7 @@ def save_config(config, save_path):
 	wandb.save(str(config_path))
 
 
-class LORD:
+class Main:
 
 	def preprocess(self, data_dir: str, save_dest: str, segment: int = 128):
 		wav2mel = Wav2Mel()
@@ -160,4 +160,4 @@ class LORD:
 
 
 if __name__ == '__main__':
-	fire.Fire(LORD())
+	fire.Fire(Main())

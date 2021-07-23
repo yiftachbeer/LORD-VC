@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 
 import wandb
 
-from model.modules import LatentModel, AmortizedModel, VGGDistance
+from model.lord import LatentModel, AmortizedModel, VGGDistance
 from model.utils import AverageMeter, NamedTensorDataset
 
 
