@@ -1,3 +1,5 @@
+
+
 base_config = dict(
 	content_dim=2048,
 	class_dim=128,
@@ -59,8 +61,8 @@ base_config = dict(
 		n_epochs=200,
 
 		learning_rate=dict(
-			generator=3e-3,
 			latent=3e-2,
+			decoder=3e-3,
 			min=1e-4
 		)
 	),

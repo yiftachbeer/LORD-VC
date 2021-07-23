@@ -22,13 +22,13 @@ def train_latent(latent_model, config, device, data_loader, callbacks):
 
 	optimizer = Adam([
 		{
-			'params': latent_model.decoder.parameters(),
-			'lr': config['train']['learning_rate']['generator']
-		},
-		{
 			'params': itertools.chain(latent_model.content_embedding.parameters(), latent_model.class_embedding.parameters()),
 			'lr': config['train']['learning_rate']['latent']
-		}
+		},
+		{
+			'params': latent_model.decoder.parameters(),
+			'lr': config['train']['learning_rate']['decoder']
+		},
 	], betas=(0.5, 0.999))
 
 	scheduler = CosineAnnealingLR(
