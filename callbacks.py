@@ -8,40 +8,42 @@ import torch
 import wandb
 
 
-class GenerateSamplesCallback:
+class GenerateSamplesLatentCallback:
 
-    def __init__(self, device):
+    def __init__(self, device, dataset, n_samples=4):
         self.device = device
+        self.dataset = dataset
+        self.n_samples = n_samples
 
         self.visualized_imgs = []
 
-    def generate_samples(self, latent_model, dataset, epoch, n_samples=4):
+    def on_epoch_end(self, latent_model, epoch):
         latent_model.eval()
         with torch.no_grad():
             img_idx = torch.from_numpy(
-                np.random.RandomState(seed=1234).choice(len(dataset), size=n_samples, replace=False).astype(np.int64))
+                np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(np.int64))
 
-            samples = dataset[img_idx]
+            samples = self.dataset[img_idx]
             samples = {name: tensor.to(self.device) for name, tensor in samples.items()}
             fig = plt.figure(figsize=(10, 10))
             fig.suptitle(f'Step={epoch}')
-            for i in range(n_samples):
+            for i in range(self.n_samples):
                 # Plot row headers (speaker)
-                plt.subplot(n_samples + 1, n_samples + 1,
-                            n_samples + 1 + i * (n_samples + 1) + 1)
+                plt.subplot(self.n_samples + 1, self.n_samples + 1,
+                            self.n_samples + 1 + i * (self.n_samples + 1) + 1)
                 plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
                 plt.gca().invert_yaxis()
                 plt.axis('off')
 
                 # Plot column headers (content)
-                plt.subplot(n_samples + 1, n_samples + 1, i + 2)
+                plt.subplot(self.n_samples + 1, self.n_samples + 1, i + 2)
                 plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
                 plt.gca().invert_yaxis()
                 plt.axis('off')
 
-                for j in range(n_samples):
-                    plt.subplot(n_samples + 1, n_samples + 1,
-                                n_samples + 2 + i * (n_samples + 1) + j + 1)
+                for j in range(self.n_samples):
+                    plt.subplot(self.n_samples + 1, self.n_samples + 1,
+                                self.n_samples + 2 + i * (self.n_samples + 1) + j + 1)
 
                     content_id = samples['img_id'][[j]]
                     class_id = samples['class_id'][[i]]
@@ -69,34 +71,44 @@ class GenerateSamplesCallback:
                     wandb.Video(np.array(self.visualized_imgs)),
                 ]}, step=epoch)
 
-    def generate_samples_amortized(self, amortized_model, dataset, epoch, n_samples=4):
+
+class GenerateSamplesAmortizedCallback:
+
+    def __init__(self, device, dataset, n_samples=4):
+        self.device = device
+        self.dataset = dataset
+        self.n_samples = n_samples
+
+        self.visualized_imgs = []
+
+    def on_epoch_end(self, amortized_model, epoch):
         amortized_model.eval()
 
         with torch.no_grad():
             img_idx = torch.from_numpy(
-                np.random.RandomState(seed=1234).choice(len(dataset), size=n_samples, replace=False).astype(np.int64))
+                np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(np.int64))
 
-            samples = dataset[img_idx]
+            samples = self.dataset[img_idx]
             samples = {name: tensor.to(self.device) for name, tensor in samples.items()}
             fig = plt.figure(figsize=(10, 10))
             fig.suptitle(f'Step={epoch}')
-            for i in range(n_samples):
+            for i in range(self.n_samples):
                 # Plot row headers (speaker)
-                plt.subplot(n_samples + 1, n_samples + 1,
-                            n_samples + 1 + i * (n_samples + 1) + 1)
+                plt.subplot(self.n_samples + 1, self.n_samples + 1,
+                            self.n_samples + 1 + i * (self.n_samples + 1) + 1)
                 plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
                 plt.gca().invert_yaxis()
                 plt.axis('off')
 
                 # Plot column headers (content)
-                plt.subplot(n_samples + 1, n_samples + 1, i + 2)
+                plt.subplot(self.n_samples + 1, self.n_samples + 1, i + 2)
                 plt.imshow(samples['img'][i, 0].detach().cpu().numpy(), cmap='inferno')
                 plt.gca().invert_yaxis()
                 plt.axis('off')
 
-                for j in range(n_samples):
-                    plt.subplot(n_samples + 1, n_samples + 1,
-                                n_samples + 2 + i * (n_samples + 1) + j + 1)
+                for j in range(self.n_samples):
+                    plt.subplot(self.n_samples + 1, self.n_samples + 1,
+                                self.n_samples + 2 + i * (self.n_samples + 1) + j + 1)
 
                     content_img = samples['img'][[j]]
                     class_img = samples['img'][[i]]
@@ -123,3 +135,13 @@ class GenerateSamplesCallback:
                 wandb.log({f'video': [
                     wandb.Video(np.array(self.visualized_imgs)),
                 ]}, step=epoch)
+
+
+class SaveModelCallback:
+
+    def __init__(self, path_to_save):
+        self.path_to_save = path_to_save
+
+    def on_epoch_end(self, model, epoch):
+        torch.save(model.state_dict(), self.path_to_save)
+        wandb.save(self.path_to_save)

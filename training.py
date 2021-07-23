@@ -1,36 +1,19 @@
 import itertools
-from pathlib import Path
 from tqdm import tqdm
-
-import numpy as np
 
 import torch
 from torch import nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data import DataLoader
 
 import wandb
 
 from model.lord import LatentModel, AmortizedModel, VGGDistance
-from utils import AverageMeter, NamedTensorDataset
+from utils import AverageMeter
 
 
-def train_latent(config, device, imgs, classes, model_dir: Path, callback):
+def train_latent(config, device, data_loader, callbacks):
 	latent_model = LatentModel(config)
-
-	data = dict(
-		img=torch.from_numpy(imgs),
-		img_id=torch.arange(imgs.shape[0]).type(torch.int64),
-		class_id=torch.from_numpy(classes.astype(np.int64))
-	)
-
-	dataset = NamedTensorDataset(data)
-	data_loader = DataLoader(
-		dataset, batch_size=config['train']['batch_size'],
-		shuffle=True, sampler=None, batch_sampler=None,
-		num_workers=1, pin_memory=True, drop_last=True
-	)
 
 	latent_model.init()
 	latent_model.to(device)
@@ -83,10 +66,9 @@ def train_latent(config, device, imgs, classes, model_dir: Path, callback):
 			pbar.set_postfix(loss=train_loss.avg)
 
 		pbar.close()
-		torch.save(latent_model.state_dict(), model_dir / 'latent.pth')
-		wandb.save(str(model_dir / 'latent.pth'))
 
-		callback.generate_samples(latent_model, dataset, epoch)
+		for callback in callbacks:
+			callback.on_epoch_end(latent_model, epoch)
 
 		wandb.log({
 			'loss': train_loss.avg,
@@ -95,22 +77,9 @@ def train_latent(config, device, imgs, classes, model_dir: Path, callback):
 		}, step=epoch)
 
 
-def train_amortized(config, device, latent_model, imgs, classes, model_dir: Path, callback):
+def train_amortized(config, device, latent_model, data_loader, callbacks):
 	amortized_model = AmortizedModel(config)
 	amortized_model.decoder.load_state_dict(latent_model.decoder.state_dict())
-
-	data = dict(
-		img=torch.from_numpy(imgs),
-		img_id=torch.arange(imgs.shape[0]).type(torch.int64),
-		class_id=torch.from_numpy(classes.astype(np.int64))
-	)
-
-	dataset = NamedTensorDataset(data)
-	data_loader = DataLoader(
-		dataset, batch_size=config['train']['batch_size'],
-		shuffle=True, sampler=None, batch_sampler=None,
-		num_workers=1, pin_memory=True, drop_last=True
-	)
 
 	latent_model.to(device)
 	amortized_model.to(device)
@@ -163,10 +132,9 @@ def train_amortized(config, device, latent_model, imgs, classes, model_dir: Path
 			pbar.set_postfix(loss=train_loss.avg)
 
 		pbar.close()
-		torch.save(amortized_model.state_dict(), model_dir / 'amortized.pth')
-		wandb.save(str(model_dir / 'amortized.pth'))
 
-		callback.generate_samples_amortized(amortized_model, dataset, epoch)
+		for callback in callbacks:
+			callback.on_epoch_end(amortized_model, epoch)
 
 		wandb.log({
 			'loss-amortized': loss.item(),
