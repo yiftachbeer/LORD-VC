@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn.utils import spectral_norm
 
+from lord import LatentModel, RegularizedEmbedding, AutoEncoder
 
 def get_act(act: str) -> nn.Module:
     if act == "lrelu":
@@ -327,3 +328,17 @@ class Decoder(nn.Module):
             )
         out = self.out_conv_layer(out)
         return out
+
+
+def get_latent_model(config):
+    return LatentModel(
+        content_embedding=RegularizedEmbedding(config['n_imgs'], config['content_dim'], config['content_std']),
+        class_embedding=nn.Embedding(config['n_classes'], config['class_dim']),
+        decoder=Decoder(**config['decoder_params']))
+
+
+def get_autoencoder(config):
+    return AutoEncoder(
+        content_encoder=ContentEncoder(**config['content_encoder_params']),
+        class_encoder=SpeakerEncoder(**config['speaker_encoder_params']),
+        decoder=Decoder(**config['decoder_params']))

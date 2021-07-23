@@ -8,13 +8,11 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 import wandb
 
-from model.lord import LatentModel, AmortizedModel, VGGDistance
+from model.lord import VGGDistance
 from utils import AverageMeter
 
 
-def train_latent(config, device, data_loader, callbacks):
-	latent_model = LatentModel(config)
-
+def train_latent(latent_model, config, device, data_loader, callbacks):
 	latent_model.init()
 	latent_model.to(device)
 
@@ -77,8 +75,7 @@ def train_latent(config, device, data_loader, callbacks):
 		}, step=epoch)
 
 
-def train_amortized(config, device, latent_model, data_loader, callbacks):
-	amortized_model = AmortizedModel(config)
+def train_amortized(amortized_model, config, device, latent_model, data_loader, callbacks):
 	amortized_model.decoder.load_state_dict(latent_model.decoder.state_dict())
 
 	latent_model.to(device)

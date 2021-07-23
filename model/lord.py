@@ -2,20 +2,15 @@ import torch
 from torch import nn
 from torchvision import models
 
-from model.adain_vc import SpeakerEncoder, ContentEncoder, Decoder
-
 
 class LatentModel(nn.Module):
 
-	def __init__(self, config):
+	def __init__(self, content_embedding, class_embedding, decoder):
 		super().__init__()
 
-		self.config = config
-
-		self.content_embedding = RegularizedEmbedding(config['n_imgs'], config['content_dim'], config['content_std'])
-		self.class_embedding = nn.Embedding(config['n_classes'], config['class_dim'])
-
-		self.decoder = Decoder(**config['decoder_params'])
+		self.content_embedding = content_embedding
+		self.class_embedding = class_embedding
+		self.decoder = decoder
 
 	def forward(self, img_id, class_id):
 		content_code = self.content_embedding(img_id)
@@ -41,16 +36,14 @@ class LatentModel(nn.Module):
 			nn.init.uniform_(m.weight, a=-0.05, b=0.05)
 
 
-class AmortizedModel(nn.Module):
+class AutoEncoder(nn.Module):
 
-	def __init__(self, config):
+	def __init__(self, content_encoder, class_encoder, decoder):
 		super().__init__()
 
-		self.config = config
-
-		self.content_encoder = ContentEncoder(**config['content_encoder_params'])
-		self.class_encoder = SpeakerEncoder(**config['speaker_encoder_params'])
-		self.decoder = Decoder(**config['decoder_params'])
+		self.content_encoder = content_encoder
+		self.class_encoder = class_encoder
+		self.decoder = decoder
 
 	def forward(self, img):
 		return self.convert(img, img)

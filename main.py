@@ -13,7 +13,7 @@ import torchaudio
 from training import train_latent, train_amortized
 from config import base_config as config
 from model.wav2mel import Wav2Mel
-from model.lord import LatentModel, AmortizedModel
+from model.adain_vc import get_latent_model, get_autoencoder
 from callbacks import GenerateSamplesLatentCallback, GenerateSamplesAmortizedCallback, SaveModelCallback
 from utils import NamedTensorDataset
 
@@ -86,8 +86,6 @@ class Main:
 
 		update_nested(config, kwargs)
 
-		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 		dataset = NamedTensorDataset(dict(
 			img=torch.from_numpy(imgs),
 			img_id=torch.arange(imgs.shape[0]).type(torch.int64),
@@ -100,9 +98,11 @@ class Main:
 			num_workers=1, pin_memory=True, drop_last=True
 		)
 
+		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		with wandb.init(config=config):
 			save_config(config, save_path)
 			train_latent(
+				latent_model=get_latent_model(config),
 				config=config,
 				device=device,
 				data_loader=data_loader,
@@ -122,9 +122,6 @@ class Main:
 
 		update_nested(config, kwargs)
 
-		latent_model = LatentModel(config)
-		latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.pth'))
-
 		dataset = NamedTensorDataset(dict(
 			img=torch.from_numpy(imgs),
 			img_id=torch.arange(imgs.shape[0]).type(torch.int64),
@@ -138,9 +135,13 @@ class Main:
 		)
 
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+		latent_model = get_latent_model(config)
+		latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.pth'))
 		with wandb.init(config=config):
 			save_config(config, model_dir)
 			train_amortized(
+				amortized_model=get_autoencoder(config),
 				config=config,
 				device=device,
 				latent_model=latent_model,
@@ -166,7 +167,7 @@ class Main:
 
 		wav2mel = Wav2Mel()
 
-		amortized_model = AmortizedModel(config)
+		amortized_model = get_autoencoder(config)
 		amortized_model.load_state_dict(torch.load(Path(model_dir) / 'amortized.pth'))
 		amortized_model.to(device)
 		amortized_model.eval()
