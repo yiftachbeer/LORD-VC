@@ -2,39 +2,44 @@ import numpy as np
 
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.data.dataset import Dataset
+from torch.utils.data.dataset import TensorDataset
 
 
-class NamedTensorDataset(Dataset):
-
-    def __init__(self, named_tensors):
-        assert all(list(named_tensors.values())[0].size(0) == tensor.size(0) for tensor in named_tensors.values())
-        self.named_tensors = named_tensors
-
-    def __getitem__(self, index):
-        return {name: tensor[index] for name, tensor in self.named_tensors.items()}
-
-    def __len__(self):
-        return list(self.named_tensors.values())[0].size(0)
-
-    def subset(self, indices):
-        return NamedTensorDataset(self[indices])
-
-
-def get_data(data_path, batch_size):
+def get_data(data_path):
     data = np.load(data_path)
     imgs = data['imgs']
 
-    dataset = NamedTensorDataset(dict(
-        img=torch.from_numpy(imgs),
-        img_id=torch.arange(imgs.shape[0]).type(torch.int64),
-        class_id=torch.from_numpy(data['classes'].astype(np.int64))
-    ))
+    dataset = TensorDataset(
+        torch.arange(imgs.shape[0]).type(torch.int64),
+        torch.from_numpy(data['classes'].astype(np.int64)),
+        torch.from_numpy(imgs)
+    )
 
-    data_loader = DataLoader(
+    return dataset, imgs, data
+
+
+def get_dataloader(dataset, batch_size):
+    return DataLoader(
         dataset, batch_size=batch_size,
         shuffle=True, sampler=None, batch_sampler=None,
         num_workers=1, pin_memory=True, drop_last=True
     )
 
-    return dataset, data_loader, imgs, data
+
+class LatentCodesDataLoader:
+
+    def __init__(self, dataloader, latent_model):
+        self.dataloader = dataloader
+        self.latent_model = latent_model
+
+    def __iter__(self):
+        for batch in self.dataloader:
+            img_id, class_id, img = batch
+            content_code = self.latent_model.content_embedding(img_id)
+            class_code = self.latent_model.class_embedding(class_id)
+
+            yield content_code, class_code, img
+
+
+def get_latent_codes_dataloader(dataset, latent_model, batch_size):
+    return LatentCodesDataLoader(get_dataloader(dataset, batch_size), latent_model)

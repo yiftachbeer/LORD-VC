@@ -1,6 +1,8 @@
+import pickle
 
+import wandb
 
-base_config = dict(
+default_config = dict(
 	content_dim=2048,
 	class_dim=128,
 
@@ -77,3 +79,46 @@ base_config = dict(
 		)
 	),
 )
+
+
+def update_nested(d1: dict, d2: dict):
+	"""
+	Update d1, that might have nested dictionaries with the items of d2.
+	Nested keys in d2 should be separated with a '/' character.
+	Example:
+	>> d1 = {'a': {'b': 1, 'c': 2}}
+	>> d2 = {'a/b': 3, 'd': 4}
+	>> update_nested(d1, d2)
+	d1 = {'a': {'b': 3, 'c': 2}, 'd': 4}
+
+	:param d1: The dict to update.
+	:param d2: The values to update with.
+	:return: The updated dict.
+	"""
+	for key, val in d2.items():
+		key_path = key.split('/')
+		curr_d = d1
+		for key in key_path[:-1]:
+			curr_d = curr_d[key]
+		curr_d[key_path[-1]] = val
+
+	return d1
+
+
+def get_config(img_shape, n_imgs, n_classes, kwargs):
+	config = default_config
+
+	config.update(dict(
+		img_shape=img_shape,
+		n_imgs=n_imgs,
+		n_classes=n_classes,
+	))
+	update_nested(config, kwargs)
+
+	return config
+
+
+def save_config(config, config_path):
+	with open(config_path, 'wb') as config_fd:
+		pickle.dump(config, config_fd)
+	wandb.save(str(config_path))

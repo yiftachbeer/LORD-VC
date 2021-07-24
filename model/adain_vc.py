@@ -6,7 +6,8 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn.utils import spectral_norm
 
-from lord import LatentModel, RegularizedEmbedding, AutoEncoder
+from model.lord import LatentModel, RegularizedEmbedding, AutoEncoder
+
 
 def get_act(act: str) -> nn.Module:
     if act == "lrelu":

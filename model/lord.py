@@ -21,11 +21,7 @@ class LatentModel(nn.Module):
 
 		generated_img = self.decoder(content_code, class_code).unsqueeze(1)  # add channel
 
-		return {
-			'img': generated_img,
-			'content_code': content_code,
-			'class_code': class_code
-		}
+		return generated_img, content_code, class_code
 
 	def init(self):
 		self.apply(self.weights_init)
@@ -54,11 +50,7 @@ class AutoEncoder(nn.Module):
 
 		generated_img = self.decoder(content_code, class_code).unsqueeze(1)  # add channel
 
-		return {
-			'img': generated_img,
-			'content_code': content_code,
-			'class_code': class_code
-		}
+		return generated_img, content_code, class_code
 
 
 class RegularizedEmbedding(nn.Module):

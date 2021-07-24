@@ -9,43 +9,12 @@ import soundfile as sf
 import torch
 import torchaudio
 
-from data import get_data
+from data import get_data, get_dataloader, get_latent_codes_dataloader
 from training import train_latent, train_amortized
-from config import base_config as config
+from config import get_config, save_config
 from model.wav2mel import Wav2Mel
 from model.adain_vc import get_latent_model, get_autoencoder
-from callbacks import GenerateSamplesLatentCallback, GenerateSamplesAmortizedCallback, SaveModelCallback
-
-
-def update_nested(d1: dict, d2: dict):
-	"""
-	Update d1, that might have nested dictionaries with the items of d2.
-	Nested keys in d2 should be separated with a '/' character.
-	Example:
-	>> d1 = {'a': {'b': 1, 'c': 2}}
-	>> d2 = {'a/b': 3, 'd': 4}
-	>> update_nested(d1, d2)
-	d1 = {'a': {'b': 3, 'c': 2}, 'd': 4}
-
-	:param d1: The dict to update.
-	:param d2: The values to update with.
-	:return: The updated dict.
-	"""
-	for key, val in d2.items():
-		key_path = key.split('/')
-		curr_d = d1
-		for key in key_path[:-1]:
-			curr_d = curr_d[key]
-		curr_d[key_path[-1]] = val
-
-	return d1
-
-
-def save_config(config, save_path):
-	config_path = Path(save_path) / 'config.pkl'
-	with open(config_path, 'wb') as config_fd:
-		pickle.dump(config, config_fd)
-	wandb.save(str(config_path))
+from callbacks import GenerateSamplesCallback, SaveModelCallback
 
 
 class Main:
@@ -74,64 +43,70 @@ class Main:
 				file_names=file_names)
 
 	def train(self, data_path: str, save_path: str, **kwargs):
-		dataset, data_loader, imgs, data = get_data(data_path, config['train']['batch_size'])
-
-		config.update(dict(
+		dataset, imgs, data = get_data(data_path)
+		config = get_config(
 			img_shape=imgs.shape[1:],
 			n_imgs=imgs.shape[0],
 			n_classes=data['n_classes'].item(),
-		))
-		update_nested(config, kwargs)
-
+			kwargs=kwargs
+		)
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+		model = get_latent_model(config)
+		model.init()
+		model.to(device)
+		data_loader = get_dataloader(dataset, config['train']['batch_size'])
 		with wandb.init(config=config):
-			save_config(config, save_path)
+			save_config(config, Path(save_path) / 'config.pkl')
 			train_latent(
-				latent_model=get_latent_model(config),
+				model=model,
 				config=config,
 				device=device,
 				data_loader=data_loader,
-				callbacks=[GenerateSamplesLatentCallback(device, dataset),
+				callbacks=[GenerateSamplesCallback(device, dataset, is_latent=True),
 						   SaveModelCallback(str(Path(save_path) / 'latent.pth'))],
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
-		dataset, data_loader, imgs, data = get_data(data_path, config['train_encoders']['batch_size'])
-
-		config.update(dict(
+		dataset, imgs, data = get_data(data_path)
+		config = get_config(
 			img_shape=imgs.shape[1:],
 			n_imgs=imgs.shape[0],
 			n_classes=data['n_classes'].item(),
-		))
-		update_nested(config, kwargs)
-
+			kwargs=kwargs
+		)
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 		latent_model = get_latent_model(config)
 		latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.pth'))
+		latent_model.to(device)
+		latent_model.eval()
+
+		amortized_model = get_autoencoder(config)
+		amortized_model.to(device)
+		amortized_model.decoder.load_state_dict(latent_model.decoder.state_dict())
+
+		data_loader = get_latent_codes_dataloader(dataset, config['train']['batch_size'], latent_model)
+
 		with wandb.init(config=config):
-			save_config(config, model_dir)
+			save_config(config, Path(model_dir) / 'config.pkl')
 			train_amortized(
-				amortized_model=get_autoencoder(config),
+				model=amortized_model,
 				config=config,
 				device=device,
-				latent_model=latent_model,
 				data_loader=data_loader,
-				callbacks=[GenerateSamplesAmortizedCallback(device, dataset),
+				callbacks=[GenerateSamplesCallback(device, dataset, is_latent=False),
 						   SaveModelCallback(str(Path(model_dir) / 'amortized.pth'))],
 			)
 
 	def convert(self, data_path, model_dir, content_file_path: str, speaker_file_path: str, output_path: str,
 				vocoder_path: str = r"pretrained\vocoder.pth", **kwargs):
-		data = np.load(data_path)
-		imgs = data['imgs']
-
-		config.update(dict(
+		dataset, imgs, data = get_data(data_path)
+		config = get_config(
 			img_shape=imgs.shape[1:],
 			n_imgs=imgs.shape[0],
 			n_classes=data['n_classes'].item(),
-		))
-		update_nested(config, kwargs)
+			kwargs=kwargs
+		)
 
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -149,7 +124,7 @@ class Main:
 			content_mel = wav2mel(*torchaudio.load(content_file_path)).to(device)
 			speaker_mel = wav2mel(*torchaudio.load(speaker_file_path)).to(device)
 
-			converted_mel = amortized_model.convert(
+			converted_mel = amortized_model.convert_latent(
 				content_img=content_mel[None, None, ...],
 				class_img=speaker_mel[None, None, ...]
 			)['img']
