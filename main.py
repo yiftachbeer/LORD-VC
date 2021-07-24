@@ -55,7 +55,9 @@ class Main:
 		model = get_latent_model(config)
 		model.init()
 		model.to(device)
-		data_loader = get_dataloader(dataset, config['train']['batch_size'])
+
+		data_loader = get_dataloader(dataset, config['train']['batch_size'], device)
+
 		with wandb.init(config=config):
 			save_config(config, Path(save_path) / 'config.pkl')
 			train_latent(
@@ -76,6 +78,7 @@ class Main:
 			kwargs=kwargs
 		)
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 		latent_model = get_latent_model(config)
 		latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.pth'))
 		latent_model.to(device)

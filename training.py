@@ -41,7 +41,7 @@ def train_latent(model, config, device, data_loader, callbacks):
 
 		pbar = tqdm(iterable=data_loader)
 		for batch in pbar:
-			img_id, class_id, img = [tensor.to(device) for tensor in batch]
+			img_id, class_id, img = batch
 
 			optimizer.zero_grad(set_to_none=True)
 			out_img, out_content_code, out_class_code = model(img_id, class_id)

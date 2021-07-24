@@ -18,12 +18,24 @@ def get_data(data_path):
     return dataset, imgs, data
 
 
-def get_dataloader(dataset, batch_size):
-    return DataLoader(
+class DeviceDataLoader:
+    # TODO is there not a builtin solution for this?
+
+    def __init__(self, dataloader, device):
+        self.dataloader = dataloader
+        self.device = device
+
+    def __iter__(self):
+        for batch in self.dataloader:
+            yield [tensor.to(self.device) for tensor in batch]
+
+
+def get_dataloader(dataset, batch_size, device):
+    return DeviceDataLoader(DataLoader(
         dataset, batch_size=batch_size,
         shuffle=True, sampler=None, batch_sampler=None,
         num_workers=1, pin_memory=True, drop_last=True
-    )
+    ), device)
 
 
 class LatentCodesDataLoader:
