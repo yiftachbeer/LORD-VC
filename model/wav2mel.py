@@ -10,7 +10,7 @@ class Wav2Mel(torch.nn.Module):
 
     def __init__(
         self,
-        sample_rate: float = 16000,
+        sample_rate: int = 16000,
         norm_db: float = -3.0,
         sil_threshold: float = 1.0,
         sil_duration: float = 0.1,

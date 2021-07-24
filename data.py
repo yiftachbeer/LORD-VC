@@ -25,6 +25,9 @@ class DeviceDataLoader:
         self.dataloader = dataloader
         self.device = device
 
+    def __len__(self):
+        return len(self.dataloader)
+
     def __iter__(self):
         for batch in self.dataloader:
             yield [tensor.to(self.device) for tensor in batch]
@@ -44,6 +47,9 @@ class LatentCodesDataLoader:
         self.dataloader = dataloader
         self.latent_model = latent_model
 
+    def __len__(self):
+        return len(self.dataloader)
+
     def __iter__(self):
         for batch in self.dataloader:
             img_id, class_id, img = batch
@@ -53,5 +59,5 @@ class LatentCodesDataLoader:
             yield content_code, class_code, img
 
 
-def get_latent_codes_dataloader(dataset, latent_model, batch_size):
-    return LatentCodesDataLoader(get_dataloader(dataset, batch_size), latent_model)
+def get_latent_codes_dataloader(dataset, batch_size, device, latent_model):
+    return LatentCodesDataLoader(get_dataloader(dataset, batch_size, device), latent_model)

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import torch
 import torch.nn as nn
@@ -215,7 +215,7 @@ class ContentEncoder(nn.Module):
         self.mean_layer = nn.Conv1d(c_h, c_out, kernel_size=1)
         self.dropout_layer = nn.Dropout(p=dropout_rate)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Tensor:
         out = self.conv_bank(x)
         out = self.in_conv_layer(out)
         out = self.norm_layer(out)
@@ -331,14 +331,14 @@ class Decoder(nn.Module):
         return out
 
 
-def get_latent_model(config):
+def get_latent_model(config: Dict) -> LatentModel:
     return LatentModel(
         content_embedding=RegularizedEmbedding(config['n_imgs'], config['content_dim'], config['content_std']),
         class_embedding=nn.Embedding(config['n_classes'], config['class_dim']),
         decoder=Decoder(**config['decoder_params']))
 
 
-def get_autoencoder(config):
+def get_autoencoder(config: Dict) -> AutoEncoder:
     return AutoEncoder(
         content_encoder=ContentEncoder(**config['content_encoder_params']),
         class_encoder=SpeakerEncoder(**config['speaker_encoder_params']),
