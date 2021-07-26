@@ -87,7 +87,7 @@ class Main:
 		autoencoder.to(device)
 		autoencoder.decoder.load_state_dict(latent_model.decoder.state_dict())
 
-		data_loader = get_latent_codes_dataloader(dataset, config['train']['batch_size'], device, latent_model)
+		data_loader = get_latent_codes_dataloader(dataset, config['train_encoders']['batch_size'], device, latent_model)
 
 		with wandb.init(config=config):
 			save_config(config, Path(model_dir) / 'config.pkl')
