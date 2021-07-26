@@ -8,7 +8,7 @@ import soundfile as sf
 import torch
 import torchaudio
 
-from data import get_data, get_dataloader, get_latent_codes_dataloader
+from data import load_data, get_dataloader, get_latent_codes_dataloader
 from training import train_latent, train_amortized
 from config import get_config, save_config
 from model.wav2mel import Wav2Mel
@@ -42,13 +42,8 @@ class Main:
 				file_names=file_names)
 
 	def train(self, data_path: str, save_path: str, **kwargs):
-		dataset, imgs, data = get_data(data_path)
-		config = get_config(
-			img_shape=imgs.shape[1:],
-			n_imgs=imgs.shape[0],
-			n_classes=data['n_classes'].item(),
-			kwargs=kwargs
-		)
+		dataset, img_shape, n_imgs, n_classes = load_data(data_path)
+		config = get_config(img_shape, n_imgs, n_classes, kwargs=kwargs)
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 		model = get_latent_model(config)
@@ -69,13 +64,8 @@ class Main:
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
-		dataset, imgs, data = get_data(data_path)
-		config = get_config(
-			img_shape=imgs.shape[1:],
-			n_imgs=imgs.shape[0],
-			n_classes=data['n_classes'].item(),
-			kwargs=kwargs
-		)
+		dataset, img_shape, n_imgs, n_classes = load_data(data_path)
+		config = get_config(img_shape, n_imgs, n_classes, kwargs=kwargs)
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 		latent_model = get_latent_model(config)

@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataset import TensorDataset
 
 
-def get_data(data_path):
+def load_data(data_path):
     data = np.load(data_path)
     imgs = data['imgs']
 
@@ -15,7 +15,7 @@ def get_data(data_path):
         torch.from_numpy(imgs)
     )
 
-    return dataset, imgs, data
+    return dataset, imgs.shape[1:], imgs.shape[0], data['n_classes'].item()
 
 
 class DeviceDataLoader:
