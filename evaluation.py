@@ -12,7 +12,7 @@ from model.wav2mel import Wav2Mel
 from model.adain_vc import AutoEncoder
 
 
-def tsne_plots(data_dir: str, model_path: str, segment: int = 128):
+def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances: int = 20):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     wav2mel = Wav2Mel()
@@ -24,7 +24,7 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128):
     content_codes = []
     speaker_labels = []
     for speaker in tqdm(sorted(Path(data_dir).glob('*'))):
-        for wav_file in sorted(speaker.rglob('*mic2.flac'))[:20]:
+        for wav_file in sorted(speaker.rglob('*mic2.flac'))[:n_utterances]:
             with torch.no_grad():
                 mel = wav2mel(*torchaudio.load(wav_file)).to(device)
                 _, content_code, class_code = autoencoder(mel[None, None, ...])
@@ -51,7 +51,7 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128):
     plt.title('Content')
     sns.scatterplot(*content_tsne, hue=speaker_labels)
 
-    plt.savefig('fig.png')
+    plt.show()
 
 
 if __name__ == '__main__':
