@@ -13,7 +13,7 @@ from training import train_latent, train_amortized
 from config import get_config, save_config
 from model.wav2mel import Wav2Mel
 from model.adain_vc import get_latent_model, get_autoencoder
-from callbacks import GenerateSamplesCallback, SaveModelCallback
+from callbacks import GenerateSamplesCallback, SaveCheckpointCallback, SaveModelCallback
 
 
 class Main:
@@ -65,7 +65,7 @@ class Main:
 				device=device,
 				data_loader=data_loader,
 				callbacks=[GenerateSamplesCallback(device, dataset, is_latent=True),
-						   SaveModelCallback(str(Path(save_path) / 'latent.ckpt'))],
+						   SaveCheckpointCallback(str(Path(save_path) / 'latent.ckpt'))],
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
@@ -97,7 +97,7 @@ class Main:
 				device=device,
 				data_loader=data_loader,
 				callbacks=[GenerateSamplesCallback(device, dataset, is_latent=False),
-						   SaveModelCallback(str(Path(model_dir) / 'autoencoder.ckpt'))],
+						   SaveCheckpointCallback(str(Path(model_dir) / 'autoencoder.ckpt'))],
 			)
 
 		SaveModelCallback(str(Path(model_dir) / 'lord-vc.pt')).on_epoch_end(autoencoder, 0)
