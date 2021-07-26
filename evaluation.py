@@ -12,7 +12,7 @@ from model.wav2mel import Wav2Mel
 from model.adain_vc import AutoEncoder
 
 
-def tsne_plots(data_dir, model_path):
+def tsne_plots(data_dir: str, model_path: str, segment: int = 128):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     wav2mel = Wav2Mel()
@@ -23,26 +23,35 @@ def tsne_plots(data_dir, model_path):
     class_codes = []
     content_codes = []
     speaker_labels = []
-    for i_spk, spk in enumerate(tqdm(sorted(Path(data_dir).glob('*')))):
-        for wav_file in sorted(spk.rglob('*mic2.flac')):
-            mel = wav2mel(*torchaudio.load(wav_file))
-            _, content_code, class_code = autoencoder(mel)
+    for speaker in tqdm(sorted(Path(data_dir).glob('*'))):
+        for wav_file in sorted(speaker.rglob('*mic2.flac'))[:20]:
+            with torch.no_grad():
+                mel = wav2mel(*torchaudio.load(wav_file)).to(device)
+                _, content_code, class_code = autoencoder(mel[None, None, ...])
 
-            class_codes.append(class_code.numpy())
-            content_codes.append(content_code.numpy())
-            speaker_labels.append(i_spk)
+                content_code = content_code[0].flatten().cpu().numpy()
+                start = content_code.shape[0] // 2 - segment // 2
+                content_code = content_code[start:start + segment]
+
+                class_code = class_code[0].cpu().numpy()
+
+                class_codes.append(class_code)
+                content_codes.append(content_code)
+                speaker_labels.append(speaker.name)
 
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
     class_tsne = tsne.fit_transform(class_codes).T
     content_tsne = tsne.fit_transform(content_codes).T
 
     plt.subplot(1, 2, 1)
-    sns.scatterplot(class_tsne, hue=speaker_labels)
+    plt.title('Class')
+    sns.scatterplot(*class_tsne, hue=speaker_labels)
 
     plt.subplot(1, 2, 2)
-    sns.scatterplot(content_tsne, hue=speaker_labels)
+    plt.title('Content')
+    sns.scatterplot(*content_tsne, hue=speaker_labels)
 
-    plt.show()
+    plt.savefig('fig.png')
 
 
 if __name__ == '__main__':
