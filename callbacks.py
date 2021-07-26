@@ -67,17 +67,20 @@ class GenerateSamplesCallback:
                         np.savez(f'samples/{epoch}_{content_id}({orig_class_id})to{converted_class_id}.npz', converted)
 
             fig = plt.figure()
-            fig.suptitle(f'Step={epoch}')
             grid = ImageGrid(fig, 111, nrows_ncols=(self.n_samples + 1, self.n_samples + 1))
             for ax, img in zip(grid, grid_to_plot):
                 ax.axis('off')
-                if img is not None:
+                if img is None:
+                    # first cell
+                    plt.title(f'Step={epoch}')
+                else:
                     ax.imshow(img, cmap='inferno')
                     ax.invert_yaxis()
             plt.tight_layout()
 
             buf = io.BytesIO()
             plt.savefig(buf, format='png')
+            plt.close()
             buf.seek(0)
             pil_img = Image.open(buf)
 

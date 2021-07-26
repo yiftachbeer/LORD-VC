@@ -43,6 +43,7 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances:
     class_tsne = tsne.fit_transform(class_codes).T
     content_tsne = tsne.fit_transform(content_codes).T
 
+    plt.figure(figsize=(10, 5))
     plt.subplot(1, 2, 1)
     plt.title('Class')
     sns.scatterplot(*class_tsne, hue=speaker_labels)
