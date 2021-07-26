@@ -3,6 +3,8 @@ from PIL import Image
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
+
 import torch
 
 import wandb
@@ -40,40 +42,39 @@ class GenerateSamplesCallback:
         model.eval()
         with torch.no_grad():
             img_idx = torch.from_numpy(
-                np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(np.int64))
+                np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
+                    np.int64))
 
             samples = self.dataset[img_idx]
             img_ids, class_ids, imgs = [tensor.to(self.device) for tensor in samples]
-            fig = plt.figure(figsize=(10, 10))
-            fig.suptitle(f'Step={epoch}')
+            grid_to_plot = [None] * ((self.n_samples + 1) * (self.n_samples + 1))
             for i in range(self.n_samples):
-                # Plot row headers (speaker)
-                plt.subplot(self.n_samples + 1, self.n_samples + 1,
-                            self.n_samples + 1 + i * (self.n_samples + 1) + 1)
-                plt.imshow(imgs[i, 0].detach().cpu().numpy(), cmap='inferno')
-                plt.gca().invert_yaxis()
-                plt.axis('off')
+                # row headers (class)
+                grid_to_plot[(i + 1) * (self.n_samples + 1)] = imgs[i, 0].detach().cpu().numpy()
 
-                # Plot column headers (content)
-                plt.subplot(self.n_samples + 1, self.n_samples + 1, i + 2)
-                plt.imshow(imgs[i, 0].detach().cpu().numpy(), cmap='inferno')
-                plt.gca().invert_yaxis()
-                plt.axis('off')
-
+                # column headers (content)
+                grid_to_plot[i + 1] = imgs[i, 0].detach().cpu().numpy()
                 for j in range(self.n_samples):
-                    plt.subplot(self.n_samples + 1, self.n_samples + 1,
-                                self.n_samples + 2 + i * (self.n_samples + 1) + j + 1)
-                    cvt = convert_fn(model, i, j, imgs, img_ids, class_ids)[0].squeeze().detach().cpu().numpy()
-                    plt.imshow(cvt, cmap='inferno')
-                    plt.gca().invert_yaxis()
-                    plt.axis('off')
+                    # converted image with class i and content j
+                    converted = convert_fn(model, i, j, imgs, img_ids, class_ids)[0].squeeze().detach().cpu().numpy()
+                    grid_to_plot[(self.n_samples + 2) + i * (self.n_samples + 1) + j] = converted
 
                     if epoch % 5 == 0:
                         # Also save result to file
                         content_id = img_ids[j].item()
                         orig_class_id = class_ids[j].item()
                         converted_class_id = class_ids[i].item()
-                        np.savez(f'samples/{epoch}_{content_id}({orig_class_id})to{converted_class_id}.npz', cvt)
+                        np.savez(f'samples/{epoch}_{content_id}({orig_class_id})to{converted_class_id}.npz', converted)
+
+            fig = plt.figure()
+            fig.suptitle(f'Step={epoch}')
+            grid = ImageGrid(fig, 111, nrows_ncols=(self.n_samples + 1, self.n_samples + 1))
+            for ax, img in zip(grid, grid_to_plot):
+                ax.axis('off')
+                if img is not None:
+                    ax.imshow(img, cmap='inferno')
+                    ax.invert_yaxis()
+            plt.tight_layout()
 
             buf = io.BytesIO()
             plt.savefig(buf, format='png')
@@ -87,6 +88,7 @@ class GenerateSamplesCallback:
                 wandb.log({f'video': [
                     wandb.Video(np.array(self.visualized_imgs)),
                 ]}, step=epoch)
+
 
 
 class SaveCheckpointCallback:
