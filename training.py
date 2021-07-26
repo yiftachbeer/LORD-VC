@@ -49,9 +49,9 @@ def train_latent(model, config, device, data_loader, callbacks):
 			content_penalty = torch.sum(out_content_code ** 2, dim=1).mean()
 			dvector_orig = dvector(img.squeeze(1).transpose(1, 2))
 			dvector_const = dvector(out_img.squeeze(1).transpose(1, 2))
-			speaker_loss = -cos_sim(dvector_orig, dvector_const).mean()
+			speaker_loss = (1 - cos_sim(dvector_orig, dvector_const).mean()) / 2
 			reconstruction_loss = criterion(out_img, img)
-			loss = reconstruction_loss + config['content_decay'] * content_penalty + speaker_loss
+			loss = reconstruction_loss + config['content_decay'] * content_penalty + config['lambda_speaker'] * speaker_loss
 
 			loss.backward()
 			optimizer.step()

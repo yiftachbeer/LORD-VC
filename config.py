@@ -11,9 +11,7 @@ default_config = dict(
 
 	content_std=1,
 	content_decay=1e-4,
-
-	n_adain_layers=4,
-	adain_dim=256,
+	lambda_speaker=1,
 
 	content_encoder_params=dict(
 		c_in=80,
