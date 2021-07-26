@@ -60,7 +60,7 @@ class Main:
 				device=device,
 				data_loader=data_loader,
 				callbacks=[GenerateSamplesCallback(device, dataset, is_latent=True),
-						   SaveCheckpointCallback(str(Path(save_path) / 'latent.ckpt'))],
+						   SaveCheckpointCallback(Path(save_path) / 'latent.ckpt')],
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
@@ -87,10 +87,10 @@ class Main:
 				device=device,
 				data_loader=data_loader,
 				callbacks=[GenerateSamplesCallback(device, dataset, is_latent=False),
-						   SaveCheckpointCallback(str(Path(model_dir) / 'autoencoder.ckpt'))],
+						   SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt')],
 			)
 
-			SaveModelCallback(str(Path(model_dir) / 'lord-vc.pt')).on_epoch_end(autoencoder, 0)
+			SaveModelCallback(Path(model_dir) / 'lord-vc.pt').on_epoch_end(autoencoder, 0)
 
 	def convert(self, model_path: str, content_file_path: str, speaker_file_path: str, output_path: str,
 				vocoder_path: str = r"pretrained\vocoder.pth"):

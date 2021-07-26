@@ -1,3 +1,4 @@
+from pathlib import Path
 import io
 from PIL import Image
 
@@ -93,11 +94,13 @@ class GenerateSamplesCallback:
                 ]}, step=epoch)
 
 
-
 class SaveCheckpointCallback:
 
-    def __init__(self, path_to_save):
-        self.path_to_save = path_to_save
+    def __init__(self, path_to_save: Path):
+        self.path_to_save = str(path_to_save)
+
+        if not path_to_save.parent.exists():
+            path_to_save.parent.mkdir(parents=True)
 
     def on_epoch_end(self, model, epoch):
         torch.save(model.state_dict(), self.path_to_save)
@@ -106,8 +109,11 @@ class SaveCheckpointCallback:
 
 class SaveModelCallback:
 
-    def __init__(self, path_to_save):
-        self.path_to_save = path_to_save
+    def __init__(self, path_to_save: Path):
+        self.path_to_save = str(path_to_save)
+
+        if not path_to_save.parent.exists():
+            path_to_save.parent.mkdir(parents=True)
 
     def on_epoch_end(self, model, epoch):
         torch.save(model, self.path_to_save)
