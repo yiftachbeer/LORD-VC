@@ -100,7 +100,7 @@ class Main:
 						   SaveModelCallback(str(Path(model_dir) / 'autoencoder.ckpt'))],
 			)
 
-		torch.save(autoencoder, str(Path(model_dir) / 'lord-vc.pt'))
+		SaveModelCallback(str(Path(model_dir) / 'lord-vc.pt')).on_epoch_end(autoencoder, 0)
 
 	def convert(self, model_path: str, content_file_path: str, speaker_file_path: str, output_path: str,
 				vocoder_path: str = r"pretrained\vocoder.pth"):

@@ -89,11 +89,21 @@ class GenerateSamplesCallback:
                 ]}, step=epoch)
 
 
-class SaveModelCallback:
+class SaveCheckpointCallback:
 
     def __init__(self, path_to_save):
         self.path_to_save = path_to_save
 
     def on_epoch_end(self, model, epoch):
         torch.save(model.state_dict(), self.path_to_save)
+        wandb.save(self.path_to_save)
+
+
+class SaveModelCallback:
+
+    def __init__(self, path_to_save):
+        self.path_to_save = path_to_save
+
+    def on_epoch_end(self, model, epoch):
+        torch.save(model, self.path_to_save)
         wandb.save(self.path_to_save)
