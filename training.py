@@ -50,7 +50,8 @@ def train_latent(model, config, device, data_loader, callbacks):
 			dvector_orig = dvector(img.squeeze(1).transpose(1, 2))
 			dvector_const = dvector(out_img.squeeze(1).transpose(1, 2))
 			speaker_loss = -cos_sim(dvector_orig, dvector_const).mean()
-			loss = criterion(out_img, img) + config['content_decay'] * content_penalty + speaker_loss
+			reconstruction_loss = criterion(out_img, img)
+			loss = reconstruction_loss + config['content_decay'] * content_penalty + speaker_loss
 
 			loss.backward()
 			optimizer.step()
@@ -66,9 +67,11 @@ def train_latent(model, config, device, data_loader, callbacks):
 			callback.on_epoch_end(model, epoch)
 
 		wandb.log({
-			'loss': train_loss.avg,
-			'decoder_lr': scheduler.get_last_lr()[0],
-			'latent_lr': scheduler.get_last_lr()[1],
+			'loss': loss.item(),
+			'reconstruction-loss': reconstruction_loss.item(),
+			'speaker-loss': speaker_loss.item(),
+			'decoder-lr': scheduler.get_last_lr()[0],
+			'latent-lr': scheduler.get_last_lr()[1],
 		}, step=epoch)
 
 
@@ -122,9 +125,9 @@ def train_amortized(model, config, device, data_loader, callbacks):
 			callback.on_epoch_end(model, epoch)
 
 		wandb.log({
-			'loss-amortized': loss.item(),
-			'rec-loss-amortized': loss_reconstruction.item(),
-			'content-loss-amortized': loss_content.item(),
-			'class-loss-amortized': loss_class.item(),
+			'loss': loss.item(),
+			'reconstruction-loss': loss_reconstruction.item(),
+			'content-loss': loss_content.item(),
+			'class-loss': loss_class.item(),
 		}, step=epoch)
 
