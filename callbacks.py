@@ -73,7 +73,7 @@ class GenerateSamplesCallback:
                 ax.axis('off')
                 if img is None:
                     # first cell
-                    plt.title(f'Step={epoch}')
+                    ax.set_title(f'Step={epoch}')
                 else:
                     ax.imshow(img, cmap='inferno')
                     ax.invert_yaxis()
