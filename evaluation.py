@@ -9,7 +9,7 @@ import torch
 import torchaudio
 
 from model.wav2mel import Wav2Mel
-from model.adain_vc import AutoEncoder
+from model.lord import AutoEncoder
 
 
 def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances: int = 20):

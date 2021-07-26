@@ -1,3 +1,6 @@
+from typing import Dict
+
+from pathlib import Path
 import pickle
 
 import wandb
@@ -118,7 +121,10 @@ def get_config(img_shape, n_imgs, n_classes, kwargs):
 	return config
 
 
-def save_config(config, config_path):
+def save_config(config: Dict, config_path: Path):
+	if not config_path.parent.exists():
+		config_path.parent.mkdir(parents=True)
+
 	with open(config_path, 'wb') as config_fd:
 		pickle.dump(config, config_fd)
 	wandb.save(str(config_path))
