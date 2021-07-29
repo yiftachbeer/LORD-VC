@@ -3,15 +3,15 @@ from tqdm.auto import tqdm
 import numpy as np
 import fire
 import wandb
-import soundfile as sf
 
 import torch
 
 from data import load_data, get_dataloader, get_latent_codes_dataloader
 from training import train_latent, train_amortized
 from config import get_config, save_config
-from model.wav2mel import Wav2Mel
+from model.wav2mel import Wav2Mel, Mel2Wav
 from model.adain_vc import get_latent_model, get_autoencoder
+from model.lord import AutoEncoder
 from callbacks import GenerateSamplesCallback, SaveCheckpointCallback, SaveModelCallback
 
 
@@ -96,9 +96,9 @@ class Main:
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 		wav2mel = Wav2Mel()
+		mel2wav = Mel2Wav(vocoder_path, wav2mel.sample_rate, device)
 
-		model = torch.load(model_path, map_location=device).eval()
-		vocoder = torch.jit.load(vocoder_path, map_location=device).eval()
+		model: AutoEncoder = torch.load(model_path, map_location=device).eval()
 
 		with torch.no_grad():
 			content_mel = wav2mel.parse_file(content_file_path).to(device)
@@ -107,10 +107,9 @@ class Main:
 			converted_mel = model.convert(
 				content_img=content_mel[None, None, ...],
 				class_img=speaker_mel[None, None, ...]
-			)[0]
+			)[0][0, 0]
 
-			wav = vocoder.generate([converted_mel[0, 0].T])[0]
-			sf.write(output_path, wav.data.cpu().numpy(), wav2mel.sample_rate)
+			mel2wav.to_file(converted_mel, output_path)
 
 
 if __name__ == '__main__':

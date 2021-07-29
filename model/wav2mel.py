@@ -1,4 +1,4 @@
-"""Wav2Mel for processing audio data."""
+import soundfile as sf
 
 import torch
 import torchaudio
@@ -99,7 +99,7 @@ class LogMelspectrogram(torch.nn.Module):
 
     def __init__(
         self,
-        sample_rate: float,
+        sample_rate: int,
         fft_window_ms: float,
         fft_hop_ms: float,
         n_fft: int,
@@ -135,3 +135,14 @@ class LogMelspectrogram(torch.nn.Module):
         mel_tensor = 20 * mel_tensor.clamp(min=1e-9).log10()
         mel_tensor = (mel_tensor - self.ref_db + self.dc_db) / self.dc_db
         return mel_tensor
+
+
+class Mel2Wav:
+
+    def __init__(self, vocoder_path: str, sample_rate: int, device):
+        self.vocoder = torch.jit.load(vocoder_path, map_location=device).eval()
+        self.sample_rate = sample_rate
+
+    def to_file(self, mel, save_path):
+        wav = self.vocoder.generate([mel.T])[0]
+        sf.write(save_path, wav.data.cpu().numpy(), sample_rate)

@@ -24,7 +24,7 @@ main.py train_encoders <data_path> <model_dir>
 
 Creating T-SNE plots for class and content:
 ```
-evaluation.py tsne <data_dir> <model_path> [<segment>, >n_utterances>]
+evaluation.py tsne <data_dir> <model_path> [<segment>, <n_utterances>]
 ```
 
 Calculating neural MOS scores for generated samples:
