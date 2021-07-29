@@ -137,7 +137,7 @@ class GenerateAudioSamplesCallback:
             model.cpu()
             self.mel2wav.to(self.device)
 
-            wandb.log({f'samples-{epoch}': [wandb.Audio(wav, sample_rate=self.mel2wav.sr) for wav in
+            wandb.log({f'samples-{epoch}': [wandb.Audio(wav.cpu().numpy(), sample_rate=self.mel2wav.sample_rate) for wav in
                                             self.mel2wav.convert(mels)]
                        },
                       step=epoch)
