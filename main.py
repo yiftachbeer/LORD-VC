@@ -92,16 +92,13 @@ class Main:
 			SaveModelCallback(Path(model_dir) / 'lord-vc.pt').on_epoch_end(autoencoder, 0)
 
 	def convert(self, model_path: str, content_file_path: str, speaker_file_path: str, output_path: str,
-				vocoder_path: str = r"pretrained\vocoder.pth"):
+				vocoder_path: str = r"pretrained\vocoder.pt"):
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 		wav2mel = Wav2Mel()
 
-		model = torch.load(model_path, map_location=device)
-		model.eval()
-
-		vocoder = torch.jit.load(vocoder_path, map_location=device)
-		vocoder.eval()
+		model = torch.load(model_path, map_location=device).eval()
+		vocoder = torch.jit.load(vocoder_path, map_location=device).eval()
 
 		with torch.no_grad():
 			content_mel = wav2mel.parse_file(content_file_path).to(device)

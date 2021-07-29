@@ -1,9 +1,13 @@
 from pathlib import Path
 from tqdm import tqdm
 import fire
+import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import seaborn as sns
+
+import librosa
+import sox
 
 import torch
 
@@ -16,8 +20,7 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances:
 
     wav2mel = Wav2Mel()
 
-    autoencoder: AutoEncoder = torch.load(model_path, map_location=device)
-    autoencoder.eval()
+    autoencoder: AutoEncoder = torch.load(model_path, map_location=device).eval()
 
     class_codes = []
     content_codes = []
@@ -54,5 +57,30 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances:
     plt.show()
 
 
+def mean_opinion_score(data_path: str):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model = torch.jit.load('pretrained/neural_mos.pt', map_location=device).eval()
+
+    tfm = sox.Transformer()
+
+    scores = []
+    for file_path in Path(data_path).glob('*'):
+        wav, _ = librosa.load(file_path, sr=16000)
+        wav = tfm.build_array(input_array=wav, sample_rate_in=16000)
+        spect = np.abs(librosa.stft(wav, n_fft=512)).T[None, None, ...]
+        spect = torch.from_numpy(spect)
+
+        with torch.no_grad():
+            spect = spect.to(device)
+            score = model.only_mean_inference(spect)
+            scores.append(score.item())
+
+    return np.mean(scores)
+
+
 if __name__ == '__main__':
-    fire.Fire(tsne_plots)
+    fire.Fire({
+        'tsne': tsne_plots,
+        'mos': mean_opinion_score,
+    })
