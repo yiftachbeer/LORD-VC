@@ -1,48 +1,38 @@
 # LORD-VC
-An adaptation of LORD ([Demystifying Inter-Class Disentanglement](http://www.vision.huji.ac.il/lord)) to speech audio.
-Also borrows heavily from ([One-shot Voice Conversion by Separating Speaker and Content Representations with Instance Normalization](https://arxiv.org/abs/1904.05742)).
+Disentanglement of speaker from speech by combining [LORD](http://www.vision.huji.ac.il/lord) and [AdaIN-VC](https://arxiv.org/abs/1904.05742).
 
-### Getting started
-Training a model for disentanglement requires several steps.
+## Usage
 
-#### Preprocessing an image dataset
-Preprocessing a local copy of one of the supported datasets can be done as follows:
+### Training
+
+Preprocessing a dataset:
 ```
-lord.py --base-dir <output-root-dir> preprocess
-    --dataset-id {mnist,smallnorb,cars3d,shapes3d,celeba,kth,rafd}
-    --dataset-path <input-dataset-path>
-    --data-name <output-data-filename>
+main.py preprocess <data_dir> <save_dest> [<segment>]
 ```
 
-Splitting a preprocessed dataset into train and test sets can be done according to one of two configurations:
+Training a model with latent optimization (first stage):
 ```
-lord.py --base-dir <output-root-dir> split-classes
-    --input-data-name <input-data-filename>
-    --train-data-name <output-train-data-filename>
-    --test-data-name <output-test-data-filename>
-    --num-test-classes <number-of-random-test-classes>
+main.py train <data_path> <save_path>
 ```
 
+Training encoders for amortized inference (second stage):
 ```
-lord.py --base-dir <output-root-dir> split-samples
-    --input-data-name <input-data-filename>
-    --train-data-name <output-train-data-filename>
-    --test-data-name <output-test-data-filename>
-    --test-split <ratio-of-random-test-samples>
+main.py train_encoders <data_path> <model_dir>
 ```
 
-#### Training a model
-Given a preprocessed train set, training a model with latent optimization (first stage) can be done as follows:
+### Evaluation
+
+Creating T-SNE plots for class and content:
 ```
-lord.py --base-dir <output-root-dir> train
-    --data-name <input-preprocessed-data-filename>
-    --model-name <output-model-name>
+evaluation.py tsne <data_dir> <model_path> [<segment>, >n_utterances>]
 ```
 
-Training encoders for amortized inference (second stage) can be done as follows:
+Calculating neural MOS scores for generated samples:
 ```
-lord.py --base-dir <output-root-dir> train-encoders
-    --data-name <input-preprocessed-data-filename>
-    --model-name <input-model-name>
+evaluation.py mean_opinion_score <data_dir>
 ```
 
+## See Also
+
+* [Demystifying Inter-Class Disentanglement](http://www.vision.huji.ac.il/lord)
+* [One-shot Voice Conversion by Separating Speaker and Content Representations with Instance Normalization](https://arxiv.org/abs/1904.05742)
