@@ -139,7 +139,7 @@ class LogMelspectrogram(torch.nn.Module):
 
 class Mel2Wav:
 
-    def __init__(self, device, sample_rate: int = 16000, vocoder_path: str = r"pretrained\vocoder.pt"):
+    def __init__(self, device, sample_rate: int = 16000, vocoder_path: str = "pretrained/vocoder.pt"):
         self.vocoder = torch.jit.load(vocoder_path, map_location=device).eval()
         self.sample_rate = sample_rate
 
