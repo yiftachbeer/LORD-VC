@@ -1,5 +1,8 @@
+from typing import Tuple
+
 import torch
 from torch import nn
+from torch import Tensor
 from torchvision import models
 
 
@@ -44,7 +47,8 @@ class AutoEncoder(nn.Module):
 	def forward(self, img):
 		return self.convert(img, img)
 
-	def convert(self, content_img, class_img):
+	@torch.jit.export
+	def convert(self, content_img: Tensor, class_img: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
 		content_code = self.content_encoder(content_img.squeeze(1))
 		class_code = self.class_encoder(class_img.squeeze(1))
 
