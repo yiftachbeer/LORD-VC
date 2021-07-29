@@ -99,7 +99,7 @@ class Main:
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 		wav2mel = Wav2Mel()
-		mel2wav = Mel2Wav(device, sample_rate=wav2mel.sample_rate)
+		mel2wav = Mel2Wav(sample_rate=wav2mel.sample_rate).to(device)
 
 		model: AutoEncoder = torch.load(model_path, map_location=device).eval()
 

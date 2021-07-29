@@ -92,7 +92,7 @@ class GenerateAudioSamplesCallback:
     def __init__(self, dataset, device, n_samples=4, is_latent=True, save_every: int = 5):
         self.dataset = dataset
         self.device = device
-        self.mel2wav = Mel2Wav(device)
+        self.mel2wav = Mel2Wav()
         self.n_samples = n_samples
         self.is_latent = is_latent
 
@@ -134,10 +134,15 @@ class GenerateAudioSamplesCallback:
                     converted = convert_fn(model, i, j, imgs, img_ids, class_ids)[0].squeeze().detach().cpu().numpy()
                     mels.append(converted)
 
+            model.cpu()
+            self.mel2wav.to(self.device)
+
             wandb.log({f'samples-{epoch}': [wandb.Audio(wav, sample_rate=self.mel2wav.sr) for wav in
                                             self.mel2wav.convert(mels)]
                        },
                       step=epoch)
+
+            model.to(self.device)
 
 
 class SaveCheckpointCallback:

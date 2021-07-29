@@ -1,12 +1,14 @@
 import soundfile as sf
 
 import torch
+from torch import nn
+
 import torchaudio
 from torchaudio.sox_effects import apply_effects_tensor
 from torchaudio.transforms import MelSpectrogram
 
 
-class Wav2Mel(torch.nn.Module):
+class Wav2Mel(nn.Module):
     """Transform audio file into mel spectrogram tensors."""
 
     def __init__(
@@ -63,7 +65,7 @@ class Wav2Mel(torch.nn.Module):
         return self(*torchaudio.load(file_path))
 
 
-class SoxEffects(torch.nn.Module):
+class SoxEffects(nn.Module):
     """Transform waveform tensors."""
 
     def __init__(
@@ -94,7 +96,7 @@ class SoxEffects(torch.nn.Module):
         return wav_tensor
 
 
-class LogMelspectrogram(torch.nn.Module):
+class LogMelspectrogram(nn.Module):
     """Transform waveform tensors into log mel spectrogram tensors."""
 
     def __init__(
@@ -137,10 +139,12 @@ class LogMelspectrogram(torch.nn.Module):
         return mel_tensor
 
 
-class Mel2Wav:
+class Mel2Wav(nn.Module):
 
-    def __init__(self, device, sample_rate: int = 16000, vocoder_path: str = "pretrained/vocoder.pt"):
-        self.vocoder = torch.jit.load(vocoder_path, map_location=device).eval()
+    def __init__(self, sample_rate: int = 16000, vocoder_path: str = "pretrained/vocoder.pt"):
+        super().__init__()
+
+        self.vocoder = torch.jit.load(vocoder_path).eval()
         self.sample_rate = sample_rate
 
     def convert(self, mels):

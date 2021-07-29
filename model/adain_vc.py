@@ -1,7 +1,7 @@
-from typing import List, Tuple, Dict
+from typing import List, Dict
 
 import torch
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
 from torch import Tensor
 from torch.nn.utils import spectral_norm
