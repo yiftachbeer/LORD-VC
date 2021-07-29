@@ -8,14 +8,30 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 import wandb
 
-from model.lord import VGGDistance
-from utils import AverageMeter
+from model.loss import VGGDistance, SpeakerLoss
+
+
+class AverageMeter:
+
+	def __init__(self):
+		self.reset()
+
+	def reset(self):
+		self.val = 0
+		self.avg = 0
+		self.sum = 0
+		self.count = 0
+
+	def update(self, val, n=1):
+		self.val = val
+		self.sum += val * n
+		self.count += n
+		self.avg = self.sum / self.count
 
 
 def train_latent(model, config, device, data_loader, callbacks):
-	criterion = VGGDistance(config['perceptual_loss']['layers']).to(device)
-	dvector = torch.jit.load('pretrained/dvector.pt', map_location=device)
-	cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+	reconstruction_criterion = VGGDistance(config['perceptual_loss']['layers']).to(device)
+	speaker_criterion = SpeakerLoss().to(device)
 
 	optimizer = Adam([
 		{
@@ -45,10 +61,8 @@ def train_latent(model, config, device, data_loader, callbacks):
 			out_img, out_content_code, out_class_code = model(img_id, class_id)
 
 			content_penalty = torch.sum(out_content_code ** 2, dim=1).mean()
-			dvector_orig = dvector(img.squeeze(1).transpose(1, 2))
-			dvector_const = dvector(out_img.squeeze(1).transpose(1, 2))
-			speaker_loss = (1 - cos_sim(dvector_orig, dvector_const).mean()) / 2
-			reconstruction_loss = criterion(out_img, img)
+			reconstruction_loss = reconstruction_criterion(out_img, img)
+			speaker_loss = speaker_criterion(out_img, img)
 			loss = reconstruction_loss + config['content_decay'] * content_penalty + config['lambda_speaker'] * speaker_loss
 
 			loss.backward()
