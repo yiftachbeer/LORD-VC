@@ -5,16 +5,18 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
+import wandb
 
 import torch
 
-import wandb
+from model.wav2mel import Mel2Wav
 
 
 class PlotTransferCallback:
 
-    def __init__(self, dataset, n_samples=4, is_latent=True):
+    def __init__(self, dataset, device, n_samples=4, is_latent=True):
         self.dataset = dataset
+        self.device = device
         self.n_samples = n_samples
         self.is_latent = is_latent
 
@@ -45,7 +47,7 @@ class PlotTransferCallback:
                 np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
                     np.int64))
 
-            img_ids, class_ids, imgs = self.dataset[img_idx]
+            img_ids, class_ids, imgs = [tensor.to(self.device) for tensor in self.dataset[img_idx]]
             grid_to_plot = [None] * ((self.n_samples + 1) * (self.n_samples + 1))
             for i in range(self.n_samples):
                 # row headers (class)
@@ -87,9 +89,10 @@ class PlotTransferCallback:
 
 class GenerateAudioSamplesCallback:
 
-    def __init__(self, dataset, mel2wav, n_samples=4, is_latent=True, save_every: int = 5):
+    def __init__(self, dataset, device, n_samples=4, is_latent=True, save_every: int = 5):
         self.dataset = dataset
-        self.mel2wav = mel2wav
+        self.device = device
+        self.mel2wav = Mel2Wav(device)
         self.n_samples = n_samples
         self.is_latent = is_latent
 
@@ -123,7 +126,7 @@ class GenerateAudioSamplesCallback:
                 np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
                     np.int64))
 
-            img_ids, class_ids, imgs = self.dataset[img_idx]
+            img_ids, class_ids, imgs = [tensor.to(self.device) for tensor in self.dataset[img_idx]]
 
             mels = []
             for i in range(self.n_samples):

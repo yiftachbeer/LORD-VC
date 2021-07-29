@@ -59,8 +59,8 @@ class Main:
 				device=device,
 				data_loader=data_loader,
 				callbacks=[
-					PlotTransferCallback(dataset, is_latent=True),
-					GenerateAudioSamplesCallback(dataset, Mel2Wav(device), is_latent=True),
+					PlotTransferCallback(dataset, device, is_latent=True),
+					GenerateAudioSamplesCallback(dataset, device, is_latent=True),
 					SaveCheckpointCallback(Path(save_path) / 'latent.ckpt')],
 			)
 
@@ -88,8 +88,8 @@ class Main:
 				device=device,
 				data_loader=data_loader,
 				callbacks=[
-					PlotTransferCallback(dataset, is_latent=False),
-					GenerateAudioSamplesCallback(dataset, Mel2Wav(device), is_latent=False),
+					PlotTransferCallback(dataset, device, is_latent=False),
+					GenerateAudioSamplesCallback(dataset, device, is_latent=False),
 					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt')],
 			)
 
