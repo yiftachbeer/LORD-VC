@@ -40,9 +40,7 @@ def train_latent(model, config, device, data_loader, callbacks):
 		train_loss.reset()
 
 		pbar = tqdm(iterable=data_loader)
-		for batch in pbar:
-			img_id, class_id, img = batch
-
+		for img_id, class_id, img in pbar:
 			optimizer.zero_grad(set_to_none=True)
 			out_img, out_content_code, out_class_code = model(img_id, class_id)
 
@@ -98,9 +96,7 @@ def train_amortized(model, config, device, data_loader, callbacks):
 		train_loss.reset()
 
 		pbar = tqdm(iterable=data_loader)
-		for batch in pbar:
-			content_code, class_code, img = [tensor.to(device) for tensor in batch]
-
+		for content_code, class_code, img in pbar:
 			optimizer.zero_grad(set_to_none=True)
 
 			out_img, out_content_code, out_class_code = model(img)
