@@ -1,6 +1,7 @@
 """Wav2Mel for processing audio data."""
 
 import torch
+import torchaudio
 from torchaudio.sox_effects import apply_effects_tensor
 from torchaudio.transforms import MelSpectrogram
 
@@ -57,6 +58,9 @@ class Wav2Mel(torch.nn.Module):
             return None
         mel_tensor = self.log_melspectrogram(wav_tensor)
         return mel_tensor
+
+    def parse_file(self, file_path):
+        return self(*torchaudio.load(file_path))
 
 
 class SoxEffects(torch.nn.Module):

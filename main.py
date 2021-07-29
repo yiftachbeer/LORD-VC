@@ -6,7 +6,6 @@ import wandb
 import soundfile as sf
 
 import torch
-import torchaudio
 
 from data import load_data, get_dataloader, get_latent_codes_dataloader
 from training import train_latent, train_amortized
@@ -27,7 +26,7 @@ class Main:
 
 		for i_spk, spk in enumerate(tqdm(sorted(Path(data_dir).glob('*')))):
 			for wav_file in sorted(spk.rglob('*mic2.flac')):
-				mel = wav2mel(*torchaudio.load(wav_file))
+				mel = wav2mel.parse_file(wav_file)
 				if mel is not None and mel.shape[-1] > segment:
 					start = mel.shape[-1] // 2 - segment // 2
 
@@ -105,8 +104,8 @@ class Main:
 		vocoder.eval()
 
 		with torch.no_grad():
-			content_mel = wav2mel(*torchaudio.load(content_file_path)).to(device)
-			speaker_mel = wav2mel(*torchaudio.load(speaker_file_path)).to(device)
+			content_mel = wav2mel.parse_file(content_file_path).to(device)
+			speaker_mel = wav2mel.parse_file(speaker_file_path).to(device)
 
 			converted_mel = model.convert(
 				content_img=content_mel[None, None, ...],

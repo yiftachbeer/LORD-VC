@@ -6,7 +6,6 @@ from sklearn.manifold import TSNE
 import seaborn as sns
 
 import torch
-import torchaudio
 
 from model.wav2mel import Wav2Mel
 from model.lord import AutoEncoder
@@ -26,7 +25,7 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances:
     for speaker in tqdm(sorted(Path(data_dir).glob('*'))):
         for wav_file in sorted(speaker.rglob('*mic2.flac'))[:n_utterances]:
             with torch.no_grad():
-                mel = wav2mel(*torchaudio.load(wav_file)).to(device)
+                mel = wav2mel.parse_file(wav_file).to(device)
                 _, content_code, class_code = autoencoder(mel[None, None, ...])
 
                 content_code = content_code[0].flatten().cpu().numpy()
