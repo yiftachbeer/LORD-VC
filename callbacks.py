@@ -131,7 +131,7 @@ class GenerateAudioSamplesCallback:
             mels = []
             for i in range(self.n_samples):
                 for j in range(self.n_samples):
-                    converted = convert_fn(model, i, j, imgs, img_ids, class_ids)[0].squeeze().detach().cpu().numpy()
+                    converted = convert_fn(model, i, j, imgs, img_ids, class_ids)[0].squeeze()
                     mels.append(converted)
 
             model.cpu()
