@@ -15,16 +15,21 @@ Training a model with latent optimization (first stage):
 main.py train <data_path> <save_path>
 ```
 
-Training encoders for amortized inference (second stage):
+Training the autoencoder (second stage):
 ```
 main.py train_encoders <data_path> <model_dir>
+```
+
+Converting the speaker of an audio sample to that of another using a trained model:
+```
+main.py convert <model_path> <content_file_path> <speaker_file_path> <output_path>
 ```
 
 ### Evaluation
 
 Creating T-SNE plots for class and content:
 ```
-evaluation.py tsne <data_dir> <model_path> [<segment>, <n_utterances>]
+evaluation.py tsne <data_dir> <model_path> [<segment>] [<n_utterances>]
 ```
 
 Calculating neural MOS scores for generated samples:

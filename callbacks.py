@@ -11,10 +11,9 @@ import torch
 import wandb
 
 
-class GenerateSamplesCallback:
+class PlotTransferCallback:
 
-    def __init__(self, device, dataset, n_samples=4, is_latent=True):
-        self.device = device
+    def __init__(self, dataset, n_samples=4, is_latent=True):
         self.dataset = dataset
         self.n_samples = n_samples
         self.is_latent = is_latent
@@ -25,29 +24,28 @@ class GenerateSamplesCallback:
         if self.is_latent:
             convert_fn = self.convert_latent
         else:
-            convert_fn = self.convert_amortized
+            convert_fn = self.convert_autoencoder
 
-        self.save_sample(model, epoch, convert_fn)
+        self.generate_plot(model, epoch, convert_fn)
 
     def convert_latent(self, model, i, j, imgs, img_ids, class_ids):
         content_id = img_ids[[j]]
         class_id = class_ids[[i]]
         return model(content_id, class_id)
 
-    def convert_amortized(self, model, i, j, imgs, img_ids, class_ids):
+    def convert_autoencoder(self, model, i, j, imgs, img_ids, class_ids):
         content_img = imgs[[j]]
         class_img = imgs[[i]]
         return model.convert(content_img, class_img)
 
-    def save_sample(self, model, epoch, convert_fn):
+    def generate_plot(self, model, epoch, convert_fn):
         model.eval()
         with torch.no_grad():
             img_idx = torch.from_numpy(
                 np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
                     np.int64))
 
-            samples = self.dataset[img_idx]
-            img_ids, class_ids, imgs = [tensor.to(self.device) for tensor in samples]
+            img_ids, class_ids, imgs = self.dataset[img_idx]
             grid_to_plot = [None] * ((self.n_samples + 1) * (self.n_samples + 1))
             for i in range(self.n_samples):
                 # row headers (class)
@@ -59,13 +57,6 @@ class GenerateSamplesCallback:
                     # converted image with class i and content j
                     converted = convert_fn(model, i, j, imgs, img_ids, class_ids)[0].squeeze().detach().cpu().numpy()
                     grid_to_plot[(self.n_samples + 2) + i * (self.n_samples + 1) + j] = converted
-
-                    if epoch % 5 == 0:
-                        # Also save result to file
-                        content_id = img_ids[j].item()
-                        orig_class_id = class_ids[j].item()
-                        converted_class_id = class_ids[i].item()
-                        np.savez(f'samples/{epoch}_{content_id}({orig_class_id})to{converted_class_id}.npz', converted)
 
             fig = plt.figure()
             grid = ImageGrid(fig, 111, nrows_ncols=(self.n_samples + 1, self.n_samples + 1))
@@ -85,13 +76,65 @@ class GenerateSamplesCallback:
             buf.seek(0)
             pil_img = Image.open(buf)
 
-            wandb.log({f'generated-{epoch}': [wandb.Image(pil_img)]}, step=epoch)
+            wandb.log({f'plot-{epoch}': [wandb.Image(pil_img)]}, step=epoch)
             self.visualized_imgs.append(np.asarray(pil_img).transpose(2, 0, 1)[:3])
 
             if epoch % 5 == 0:
                 wandb.log({f'video': [
                     wandb.Video(np.array(self.visualized_imgs)),
                 ]}, step=epoch)
+
+
+class GenerateAudioSamplesCallback:
+
+    def __init__(self, dataset, mel2wav, n_samples=4, is_latent=True, save_every: int = 5):
+        self.dataset = dataset
+        self.mel2wav = mel2wav
+        self.n_samples = n_samples
+        self.is_latent = is_latent
+
+        self.save_every = save_every
+
+    def on_epoch_end(self, model, epoch):
+        if self.is_latent:
+            convert_fn = self.convert_latent
+        else:
+            convert_fn = self.convert_autoencoder
+
+        self.save_samples(model, epoch, convert_fn)
+
+    def convert_latent(self, model, i, j, imgs, img_ids, class_ids):
+        content_id = img_ids[[j]]
+        class_id = class_ids[[i]]
+        return model(content_id, class_id)
+
+    def convert_autoencoder(self, model, i, j, imgs, img_ids, class_ids):
+        content_img = imgs[[j]]
+        class_img = imgs[[i]]
+        return model.convert(content_img, class_img)
+
+    def save_samples(self, model, epoch, convert_fn):
+        if not epoch % self.save_every == 0:
+            return
+
+        model.eval()
+        with torch.no_grad():
+            img_idx = torch.from_numpy(
+                np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
+                    np.int64))
+
+            img_ids, class_ids, imgs = self.dataset[img_idx]
+
+            mels = []
+            for i in range(self.n_samples):
+                for j in range(self.n_samples):
+                    converted = convert_fn(model, i, j, imgs, img_ids, class_ids)[0].squeeze().detach().cpu().numpy()
+                    mels.append(converted)
+
+            wandb.log({f'samples-{epoch}': [wandb.Audio(wav, sample_rate=self.mel2wav.sr) for wav in
+                                            self.mel2wav.convert(mels)]
+                       },
+                      step=epoch)
 
 
 class SaveCheckpointCallback:

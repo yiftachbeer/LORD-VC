@@ -7,12 +7,12 @@ import wandb
 import torch
 
 from data import load_data, get_dataloader, get_latent_codes_dataloader
-from training import train_latent, train_amortized
+from training import train_latent, train_autoencoder
 from config import get_config, save_config
 from model.wav2mel import Wav2Mel, Mel2Wav
 from model.adain_vc import get_latent_model, get_autoencoder
 from model.lord import AutoEncoder
-from callbacks import GenerateSamplesCallback, SaveCheckpointCallback, SaveModelCallback
+from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCheckpointCallback, SaveModelCallback
 
 
 class Main:
@@ -58,8 +58,10 @@ class Main:
 				config=config,
 				device=device,
 				data_loader=data_loader,
-				callbacks=[GenerateSamplesCallback(device, dataset, is_latent=True),
-						   SaveCheckpointCallback(Path(save_path) / 'latent.ckpt')],
+				callbacks=[
+					PlotTransferCallback(dataset, is_latent=True),
+					GenerateAudioSamplesCallback(dataset, Mel2Wav(device), is_latent=True),
+					SaveCheckpointCallback(Path(save_path) / 'latent.ckpt')],
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
@@ -80,23 +82,24 @@ class Main:
 
 		with wandb.init(config=config):
 			save_config(config, Path(model_dir) / 'config.pkl')
-			train_amortized(
+			train_autoencoder(
 				model=autoencoder,
 				config=config,
 				device=device,
 				data_loader=data_loader,
-				callbacks=[GenerateSamplesCallback(device, dataset, is_latent=False),
-						   SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt')],
+				callbacks=[
+					PlotTransferCallback(dataset, is_latent=False),
+					GenerateAudioSamplesCallback(dataset, Mel2Wav(device), is_latent=False),
+					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt')],
 			)
 
 			SaveModelCallback(Path(model_dir) / 'lord-vc.pt').on_epoch_end(autoencoder, 0)
 
-	def convert(self, model_path: str, content_file_path: str, speaker_file_path: str, output_path: str,
-				vocoder_path: str = r"pretrained\vocoder.pt"):
+	def convert(self, model_path: str, content_file_path: str, speaker_file_path: str, output_path: str):
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 		wav2mel = Wav2Mel()
-		mel2wav = Mel2Wav(vocoder_path, wav2mel.sample_rate, device)
+		mel2wav = Mel2Wav(device, sample_rate=wav2mel.sample_rate)
 
 		model: AutoEncoder = torch.load(model_path, map_location=device).eval()
 

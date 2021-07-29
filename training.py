@@ -87,7 +87,7 @@ def train_latent(model, config, device, data_loader, callbacks):
 		}, step=epoch)
 
 
-def train_amortized(model, config, device, data_loader, callbacks):
+def train_autoencoder(model, config, device, data_loader, callbacks):
 	reconstruction_criterion = VGGDistance(config['perceptual_loss']['layers']).to(device)
 	embedding_criterion = nn.MSELoss()
 

@@ -139,10 +139,17 @@ class LogMelspectrogram(torch.nn.Module):
 
 class Mel2Wav:
 
-    def __init__(self, vocoder_path: str, sample_rate: int, device):
+    def __init__(self, device, sample_rate: int = 16000, vocoder_path: str = r"pretrained\vocoder.pt"):
         self.vocoder = torch.jit.load(vocoder_path, map_location=device).eval()
         self.sample_rate = sample_rate
 
+    def convert(self, mels):
+        return self.vocoder.generate([mel.T for mel in mels])
+
+    def to_files(self, mels, save_paths):
+        wavs = self.convert(mels)
+        for wav, save_path in zip(wavs, save_paths):
+            sf.write(save_path, wav.data.cpu().numpy(), self.sample_rate)
+
     def to_file(self, mel, save_path):
-        wav = self.vocoder.generate([mel.T])[0]
-        sf.write(save_path, wav.data.cpu().numpy(), sample_rate)
+        self.to_files([mel], [save_path])
