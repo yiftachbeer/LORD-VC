@@ -78,7 +78,7 @@ class PlotTransferCallback:
             buf.seek(0)
             pil_img = Image.open(buf)
 
-            wandb.log({f'plot-{epoch}': [wandb.Image(pil_img)]}, step=epoch)
+            wandb.log({f'transfer plot': [wandb.Image(pil_img)]}, step=epoch)
             self.visualized_imgs.append(np.asarray(pil_img).transpose(2, 0, 1)[:3])
 
             if epoch % 5 == 0:
@@ -89,7 +89,7 @@ class PlotTransferCallback:
 
 class GenerateAudioSamplesCallback:
 
-    def __init__(self, dataset, device, n_samples=4, is_latent=True, save_every: int = 5):
+    def __init__(self, dataset, device, n_samples=3, is_latent=True, save_every: int = 5):
         self.dataset = dataset
         self.device = device
         self.mel2wav = Mel2Wav()
@@ -129,19 +129,27 @@ class GenerateAudioSamplesCallback:
             img_ids, class_ids, imgs = [tensor.to(self.device) for tensor in self.dataset[img_idx]]
 
             mels = []
+            names = []
             for i in range(self.n_samples):
                 for j in range(self.n_samples):
                     converted = convert_fn(model, i, j, imgs, img_ids, class_ids)[0].squeeze()
                     mels.append(converted)
 
+                    content_id = img_ids[j]
+                    orig_class_id = class_ids[j]
+                    converted_class_id = class_ids[i]
+                    if orig_class_id == converted_class_id:
+                        names.append(f'{epoch}_recons_{content_id}({orig_class_id})')
+                    else:
+                        names.append(f'{epoch}_transfer_{content_id}({orig_class_id}to{converted_class_id})')
+
             model.cpu()
             self.mel2wav.to(self.device)
 
-            wandb.log({f'samples-{epoch}': [wandb.Audio(wav.cpu().numpy(), sample_rate=self.mel2wav.sample_rate) for wav in
-                                            self.mel2wav.convert(mels)]
-                       },
-                      step=epoch)
+            for wav, name in zip(self.mel2wav.convert(mels), names):
+                wandb.log({name: wandb.Audio(wav.cpu().numpy(), sample_rate=self.mel2wav.sample_rate)}, step=epoch)
 
+            self.mel2wav.cpu()
             model.to(self.device)
 
 
