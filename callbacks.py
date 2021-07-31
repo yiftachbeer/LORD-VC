@@ -44,7 +44,7 @@ class PlotTransferCallback:
         model.eval()
         with torch.no_grad():
             img_idx = torch.from_numpy(
-                np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
+                np.random.RandomState(seed=4).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
                     np.int64))
 
             img_ids, class_ids, imgs = [tensor.to(self.device) for tensor in self.dataset[img_idx]]
@@ -123,7 +123,7 @@ class GenerateAudioSamplesCallback:
         model.eval()
         with torch.no_grad():
             img_idx = torch.from_numpy(
-                np.random.RandomState(seed=1234).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
+                np.random.RandomState(seed=4).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
                     np.int64))
 
             img_ids, class_ids, imgs = [tensor.to(self.device) for tensor in self.dataset[img_idx]]
@@ -139,9 +139,9 @@ class GenerateAudioSamplesCallback:
                     orig_class_id = class_ids[j]
                     converted_class_id = class_ids[i]
                     if orig_class_id == converted_class_id:
-                        names.append(f'{epoch}_recons_{content_id}({orig_class_id})')
+                        names.append(f'{epoch:03}_recons_{content_id}({orig_class_id})')
                     else:
-                        names.append(f'{epoch}_transfer_{content_id}({orig_class_id}to{converted_class_id})')
+                        names.append(f'{epoch:03}_transfer_{content_id}({orig_class_id}to{converted_class_id})')
 
             model.cpu()
             self.mel2wav.to(self.device)

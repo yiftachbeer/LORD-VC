@@ -27,7 +27,7 @@ main.py convert <model_path> <content_file_path> <speaker_file_path> <output_pat
 
 ### Evaluation
 
-Creating T-SNE plots for class and content:
+Creating t-SNE plots for class and content:
 ```
 evaluation.py tsne <data_dir> <model_path> [<segment>] [<n_utterances>]
 ```
