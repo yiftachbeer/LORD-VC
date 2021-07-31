@@ -12,7 +12,8 @@ from config import get_config, save_config
 from model.wav2mel import Wav2Mel, Mel2Wav
 from model.adain_vc import get_latent_model, get_autoencoder
 from model.lord import AutoEncoder
-from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCheckpointCallback, SaveModelCallback
+from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, GenerateEvaluationAudioSamplesCallback, \
+	SaveCheckpointCallback, SaveModelCallback
 
 
 class Main:
@@ -51,7 +52,7 @@ class Main:
 
 		data_loader = get_dataloader(dataset, config['train']['batch_size'], device)
 
-		with wandb.init(config=config):
+		with wandb.init(job_type='latent', config=config):
 			save_config(config, Path(save_path) / 'config.pkl')
 			train_latent(
 				model=model,
@@ -60,7 +61,7 @@ class Main:
 				data_loader=data_loader,
 				callbacks=[
 					PlotTransferCallback(dataset, device, is_latent=True),
-					GenerateAudioSamplesCallback(dataset, device, is_latent=True),
+					GenerateAudioSamplesCallback(dataset, Path('samples_latent'), device),
 					SaveCheckpointCallback(Path(save_path) / 'latent.ckpt')],
 			)
 
@@ -80,7 +81,7 @@ class Main:
 
 		data_loader = get_latent_codes_dataloader(dataset, config['train_encoders']['batch_size'], device, latent_model)
 
-		with wandb.init(config=config):
+		with wandb.init(job_type='encoders', config=config):
 			save_config(config, Path(model_dir) / 'config.pkl')
 			train_autoencoder(
 				model=autoencoder,
@@ -89,11 +90,11 @@ class Main:
 				data_loader=data_loader,
 				callbacks=[
 					PlotTransferCallback(dataset, device, is_latent=False),
-					GenerateAudioSamplesCallback(dataset, device, is_latent=False),
+					GenerateEvaluationAudioSamplesCallback(dataset, Path('samples_encoder'), device),
 					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt')],
 			)
 
-			SaveModelCallback(Path(model_dir) / 'lord-vc.pt').on_epoch_end(autoencoder, 0)
+			SaveModelCallback(Path(model_dir) / 'lord-vc.pt').save_model(autoencoder)
 
 	def convert(self, model_path: str, content_file_path: str, speaker_file_path: str, output_path: str):
 		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
