@@ -9,9 +9,8 @@ import torch
 from data import load_data, get_dataloader, get_latent_codes_dataloader
 from training import train_latent, train_autoencoder
 from config import get_config, save_config
-from model.wav2mel import Wav2Mel, Mel2Wav
+from model.wav2mel import Wav2Mel
 from model.adain_vc import get_latent_model, get_autoencoder
-from model.lord import AutoEncoder
 from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCheckpointCallback, SaveModelCallback
 
 
@@ -90,29 +89,9 @@ class Main:
 				callbacks=[
 					PlotTransferCallback(dataset, device, is_latent=False),
 					GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), device, is_latent=False),
-					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt')],
+					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt'),
+					SaveModelCallback(Path(model_dir) / 'lord-vc')],
 			)
-
-			SaveModelCallback(Path(model_dir) / 'lord-vc.pt').save_model(autoencoder)
-
-	def convert(self, model_path: str, content_file_path: str, speaker_file_path: str, output_path: str):
-		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-		wav2mel = Wav2Mel()
-		mel2wav = Mel2Wav(sample_rate=wav2mel.sample_rate).to(device)
-
-		model: AutoEncoder = torch.load(model_path, map_location=device).eval()
-
-		with torch.no_grad():
-			content_mel = wav2mel.parse_file(content_file_path).to(device)
-			speaker_mel = wav2mel.parse_file(speaker_file_path).to(device)
-
-			converted_mel = model.convert(
-				content_img=content_mel[None, None, ...],
-				class_img=speaker_mel[None, None, ...]
-			)[0][0, 0]
-
-			mel2wav.to_file(converted_mel, output_path)
 
 
 if __name__ == '__main__':

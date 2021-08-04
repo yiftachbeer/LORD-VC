@@ -180,10 +180,12 @@ class SaveModelCallback:
         if not path_to_save.parent.exists():
             path_to_save.parent.mkdir(parents=True)
 
-    def save_model(self, model):
+    def save_model(self, model, suffix=''):
+        path = self.path_to_save + suffix + '.pt'
+
         jit_model = torch.jit.script(model)
-        jit_model.save(self.path_to_save)
-        wandb.save(self.path_to_save)
+        jit_model.save(path)
+        wandb.save(path)
 
     def on_epoch_end(self, model, epoch):
-        self.save_model(model)
+        self.save_model(model, suffix=f'-{epoch}')
