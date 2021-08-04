@@ -95,16 +95,16 @@ def speaker_verification(converted_files_dir: str, speakers_dir: str):
         else:
             speaker_embedding = speaker_embeddings[speaker_name]
 
-        converted_speaker_embedding = resemblyzer.embed_utterance(preprocess_wav(converted_path.name))
+        converted_speaker_embedding = resemblyzer.embed_utterance(preprocess_wav(converted_path))
 
         cosine_similarity = (
                 np.inner(converted_speaker_embedding, speaker_embedding) / np.linalg.norm(converted_speaker_embedding) / np.linalg.norm(speaker_embedding)
         )
         cosine_similarities.append(cosine_similarity)
 
-        print(cosine_similarities)
+    print(cosine_similarities)
 
-        return np.mean(cosine_similarities)
+    return np.mean(cosine_similarities)
 
 
 if __name__ == '__main__':
