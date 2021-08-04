@@ -12,6 +12,17 @@ import torch
 from model.wav2mel import Mel2Wav
 
 
+class TimedCallback:
+
+    def __init__(self, callback, every: int = 1):
+        self.callback = callback
+        self.every = every
+
+    def on_epoch_end(self, model, epoch):
+        if (epoch + 1) % self.every == 0:
+            self.callback.on_epoch_end(model, epoch)
+
+
 class PlotTransferCallback:
 
     def __init__(self, dataset, device, n_samples=4, is_latent=True):
@@ -118,9 +129,6 @@ class GenerateAudioSamplesCallback:
         self.save_samples(model, epoch, convert_fn)
 
     def save_samples(self, model, epoch, convert_fn):
-        if not epoch % self.save_every == 0:
-            return
-
         model.eval()
         with torch.no_grad():
             img_idx = torch.from_numpy(

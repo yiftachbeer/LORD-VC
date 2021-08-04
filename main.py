@@ -11,7 +11,7 @@ from training import train_latent, train_autoencoder
 from config import get_config, save_config
 from model.wav2mel import Wav2Mel
 from model.adain_vc import get_latent_model, get_autoencoder
-from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCheckpointCallback, SaveModelCallback
+from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCheckpointCallback, SaveModelCallback, TimedCallback
 
 
 class Main:
@@ -59,7 +59,7 @@ class Main:
 				data_loader=data_loader,
 				callbacks=[
 					PlotTransferCallback(dataset, device, is_latent=True),
-					GenerateAudioSamplesCallback(dataset, Path('samples_latent'), device, is_latent=True),
+					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_latent'), device, is_latent=True), 5),
 					SaveCheckpointCallback(Path(save_path) / 'latent.ckpt')],
 			)
 
@@ -88,9 +88,9 @@ class Main:
 				data_loader=data_loader,
 				callbacks=[
 					PlotTransferCallback(dataset, device, is_latent=False),
-					GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), device, is_latent=False),
+					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), device, is_latent=False), 5),
 					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt'),
-					SaveModelCallback(Path(model_dir) / 'lord-vc')],
+					TimedCallback(SaveModelCallback(Path(model_dir) / 'lord-vc'), 2)],
 			)
 
 
