@@ -8,6 +8,7 @@ import seaborn as sns
 
 import librosa
 import sox
+from resemblyzer import preprocess_wav, VoiceEncoder
 
 import torch
 
@@ -57,10 +58,10 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances:
     plt.show()
 
 
-def mean_opinion_score(data_path: str):
+def mean_opinion_score(data_path: str, pretrained_path: str = 'pretrained/neural_mos.pt'):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = torch.jit.load('pretrained/neural_mos.pt', map_location=device).eval()
+    neural_mos = torch.jit.load(pretrained_path, map_location=device).eval()
 
     tfm = sox.Transformer()
 
@@ -73,14 +74,42 @@ def mean_opinion_score(data_path: str):
 
         with torch.no_grad():
             spect = spect.to(device)
-            score = model.only_mean_inference(spect)
+            score = neural_mos.only_mean_inference(spect)
             scores.append(score.item())
 
     return np.mean(scores)
+
+
+def speaker_verification(converted_files_dir: str, speakers_dir: str):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    resemblyzer = VoiceEncoder(device)
+
+    cosine_similarities = []
+    speaker_embeddings = {}
+    for converted_path in Path(converted_files_dir).glob('*'):
+        speaker_name = converted_path.name.split('_')[0]
+        if speaker_name not in speaker_embeddings:
+            speaker_wavs = [preprocess_wav(path) for path in (Path(speakers_dir) / speaker_name).glob('*')]
+            speaker_embedding = resemblyzer.embed_speaker(speaker_wavs)
+            speaker_embeddings[speaker_name] = speaker_embedding
+        else:
+            speaker_embedding = speaker_embeddings[speaker_name]
+
+        converted_speaker_embedding = resemblyzer.embed_utterance(preprocess_wav(converted_path.name))
+
+        cosine_similarity = (
+                np.inner(converted_speaker_embedding, speaker_embedding) / np.linalg.norm(converted_speaker_embedding) / np.linalg.norm(speaker_embedding)
+        )
+        cosine_similarities.append(cosine_similarity)
+
+        print(cosine_similarities)
+
+        return np.mean(cosine_similarities)
 
 
 if __name__ == '__main__':
     fire.Fire({
         'tsne': tsne_plots,
         'mos': mean_opinion_score,
+        'speaker_verification': speaker_verification,
     })

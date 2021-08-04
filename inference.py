@@ -1,3 +1,5 @@
+import fire
+
 import torch
 
 from model.wav2mel import Wav2Mel, Mel2Wav
@@ -47,3 +49,9 @@ def convert_many(model_path: str, pairs_file_path: str):
 
     mel2wav.to_files(converted_mels, output_paths)
 
+
+if __name__ == '__main__':
+    fire.Fire({
+        'convert': convert,
+        'convert_many': convert_many,
+    })
