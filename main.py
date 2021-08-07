@@ -70,14 +70,13 @@ class Main:
 
 		latent_model = get_latent_model(config)
 		latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.ckpt'))
-		latent_model.to(device)
-		latent_model.eval()
 
 		autoencoder = get_autoencoder(config)
-		autoencoder.to(device)
 		autoencoder.decoder.load_state_dict(latent_model.decoder.state_dict())
+		autoencoder.to(device)
 
-		data_loader = get_latent_codes_dataloader(dataset, config['train_encoders']['batch_size'], device, latent_model)
+		data_loader = get_latent_codes_dataloader(dataset, config['train_encoders']['batch_size'], device,
+												  latent_model.content_embedding, latent_model.class_embedding)
 
 		with wandb.init(job_type='encoders', config=config):
 			save_config(config, Path(model_dir) / 'config.pkl')
@@ -92,6 +91,12 @@ class Main:
 					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt'),
 					TimedCallback(SaveModelCallback(Path(model_dir) / 'lord-vc'), 2)],
 			)
+
+
+def memory(model):
+	mem_params = sum([param.nelement() * param.element_size() for param in model.parameters()])
+	mem_bufs = sum([buf.nelement() * buf.element_size() for buf in model.buffers()])
+	return mem_params + mem_bufs  # in bytes
 
 
 if __name__ == '__main__':
