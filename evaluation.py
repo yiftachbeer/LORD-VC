@@ -21,7 +21,7 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances:
 
     wav2mel = Wav2Mel()
 
-    autoencoder: AutoEncoder = torch.load(model_path, map_location=device).eval()
+    autoencoder: AutoEncoder = torch.jit.load(model_path, map_location=device).eval()
 
     class_codes = []
     content_codes = []
