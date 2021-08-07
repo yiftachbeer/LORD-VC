@@ -26,7 +26,9 @@ def convert(model_path: str, content_file_path: str, speaker_file_path: str, out
     model: AutoEncoder = torch.jit.load(model_path, map_location=device).eval()
 
     converted_mel = _convert_pair(model, content_file_path, speaker_file_path, wav2mel, device)
-    mel2wav.to_file(converted_mel, output_path)
+
+    with torch.no_grad():
+        mel2wav.to_file(converted_mel, output_path)
 
 
 def convert_many(model_path: str, pairs_file_path: str):
@@ -47,7 +49,8 @@ def convert_many(model_path: str, pairs_file_path: str):
             converted_mel = _convert_pair(model, content_file_path, speaker_file_path, wav2mel, device)
             converted_mels.append(converted_mel)
 
-    mel2wav.to_files(converted_mels, output_paths)
+    with torch.no_grad():
+        mel2wav.to_files(converted_mels, output_paths)
 
 
 if __name__ == '__main__':
