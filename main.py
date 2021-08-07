@@ -7,7 +7,8 @@ import wandb
 import torch
 
 from data import load_data, get_dataloader, LatentCodesDataset
-from training import train_latent, train_autoencoder
+from training.trainer import Trainer
+from training.modules import LatentModule, AutoEncoderModule
 from config import get_config, save_config
 from model.wav2mel import Wav2Mel
 from model.adain_vc import get_latent_model, get_autoencoder
@@ -48,15 +49,12 @@ class Main:
 		model.init()
 		model.to(device)
 
-		data_loader = get_dataloader(dataset, config['train']['batch_size'], device)
-
 		with wandb.init(job_type='latent', config=config):
 			save_config(config, Path(save_path) / 'config.pkl')
-			train_latent(
-				model=model,
-				config=config,
-				device=device,
-				data_loader=data_loader,
+			Trainer().fit(
+				LatentModule(model, device, config, n_imgs),
+				get_dataloader(dataset, config['train']['batch_size'], device),
+				config['train']['n_epochs'],
 				callbacks=[
 					PlotTransferCallback(dataset, device, is_latent=True),
 					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_latent'), device, is_latent=True), 5),
@@ -81,15 +79,12 @@ class Main:
 		autoencoder.decoder.load_state_dict(latent_model.decoder.state_dict())
 		autoencoder.to(device)
 
-		data_loader = get_dataloader(latent_codes_dataset, config['train_encoders']['batch_size'], device)
-
 		with wandb.init(job_type='encoders', config=config):
 			save_config(config, Path(model_dir) / 'config.pkl')
-			train_autoencoder(
-				model=autoencoder,
-				config=config,
-				device=device,
-				data_loader=data_loader,
+			Trainer().fit(
+				AutoEncoderModule(autoencoder, device, config, n_imgs),
+				get_dataloader(latent_codes_dataset, config['train_encoders']['batch_size'], device),
+				config['train_encoders']['n_epochs'],
 				callbacks=[
 					PlotTransferCallback(dataset, device, is_latent=False),
 					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), device, is_latent=False), 2),

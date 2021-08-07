@@ -37,7 +37,7 @@ class LatentCodesDataset(Dataset):
 
 
 class DeviceDataLoader:
-    # TODO is there not a builtin solution for this?
+    # TODO is there not a builtin solution for this? maybe collate_fn?
 
     def __init__(self, dataloader, device):
         self.dataloader = dataloader
