@@ -106,14 +106,9 @@ def update_nested(d1: dict, d2: dict):
 	return d1
 
 
-def get_config(img_shape, n_imgs, n_classes, kwargs):
+def get_config(**kwargs):
 	config = default_config
 
-	config.update(dict(
-		img_shape=img_shape,
-		n_imgs=n_imgs,
-		n_classes=n_classes,
-	))
 	update_nested(config, kwargs)
 
 	return config

@@ -15,7 +15,7 @@ def load_data(data_path):
         torch.from_numpy(imgs)
     )
 
-    return dataset, imgs.shape[1:], imgs.shape[0], data['n_classes'].item()
+    return dataset, imgs.shape[0], data['n_classes'].item()
 
 
 class LatentCodesDataset(Dataset):
@@ -36,24 +36,9 @@ class LatentCodesDataset(Dataset):
         return len(self.dataset)
 
 
-class DeviceDataLoader:
-    # TODO is there not a builtin solution for this? maybe collate_fn?
-
-    def __init__(self, dataloader, device):
-        self.dataloader = dataloader
-        self.device = device
-
-    def __len__(self):
-        return len(self.dataloader)
-
-    def __iter__(self):
-        for batch in self.dataloader:
-            yield tuple(tensor.to(self.device) for tensor in batch)
-
-
-def get_dataloader(dataset, batch_size, device):
-    return DeviceDataLoader(DataLoader(
+def get_dataloader(dataset, batch_size):
+    return DataLoader(
         dataset, batch_size=batch_size,
         shuffle=True, sampler=None, batch_sampler=None,
         num_workers=1, pin_memory=True, drop_last=True
-    ), device)
+    )

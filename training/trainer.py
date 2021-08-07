@@ -22,7 +22,11 @@ class AverageMeter:
 
 class Trainer:
 
+	def __init__(self, device):
+		self.device = device
+
 	def fit(self, module, data_loader, n_epochs, callbacks):
+		module.to(self.device)
 		model = module.model
 
 		train_loss = AverageMeter()
@@ -32,6 +36,8 @@ class Trainer:
 
 			pbar = tqdm(iterable=data_loader)
 			for batch in pbar:
+				batch = tuple(tensor.to(self.device) for tensor in batch)
+
 				module.optimizer.zero_grad(set_to_none=True)
 
 				train_result = module.train_step(batch)
@@ -51,4 +57,3 @@ class Trainer:
 				callback.on_epoch_end(model, epoch)
 
 			wandb.log(train_result, step=epoch)
-

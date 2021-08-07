@@ -331,10 +331,10 @@ class Decoder(nn.Module):
         return out
 
 
-def get_latent_model(config: Dict) -> LatentModel:
+def get_latent_model(config: Dict, n_imgs: int, n_classes: int) -> LatentModel:
     return LatentModel(
-        content_embedding=RegularizedEmbedding(config['n_imgs'], config['content_dim'], config['content_std']),
-        class_embedding=nn.Embedding(config['n_classes'], config['class_dim']),
+        content_embedding=RegularizedEmbedding(n_imgs, config['content_dim'], config['content_std']),
+        class_embedding=nn.Embedding(n_classes, config['class_dim']),
         decoder=Decoder(**config['decoder_params']))
 
 

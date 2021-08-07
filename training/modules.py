@@ -8,12 +8,14 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from model.loss import VGGDistance, SpeakerLoss
 
 
-class LatentModule:
+class LatentModule(nn.Module):
 
-    def __init__(self, model, device, config, n_imgs):
+    def __init__(self, model, config, n_imgs):
+        super().__init__()
+
         self.model = model
-        self.reconstruction_criterion = VGGDistance(config['perceptual_loss']['layers']).to(device)
-        self.speaker_criterion = SpeakerLoss().to(device)
+        self.reconstruction_criterion = VGGDistance(config['perceptual_loss']['layers'])
+        self.speaker_criterion = SpeakerLoss()
 
         self.lambda_content = config['content_decay']
         self.lambda_speaker = config['lambda_speaker']
@@ -56,11 +58,13 @@ class LatentModule:
         }
 
 
-class AutoEncoderModule:
+class AutoEncoderModule(nn.Module):
 
-    def __init__(self, model, device, config, n_imgs):
+    def __init__(self, model, config, n_imgs):
+        super().__init__()
+
         self.model = model
-        self.reconstruction_criterion = VGGDistance(config['perceptual_loss']['layers']).to(device)
+        self.reconstruction_criterion = VGGDistance(config['perceptual_loss']['layers'])
         self.embedding_criterion = nn.MSELoss()
 
         self.optimizer = Adam(
