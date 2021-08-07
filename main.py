@@ -6,7 +6,7 @@ import wandb
 
 import torch
 
-from data import load_data, get_dataloader, get_latent_codes_dataloader
+from data import load_data, get_dataloader, LatentCodesDataset
 from training import train_latent, train_autoencoder
 from config import get_config, save_config
 from model.wav2mel import Wav2Mel
@@ -71,12 +71,17 @@ class Main:
 		latent_model = get_latent_model(config)
 		latent_model.load_state_dict(torch.load(Path(model_dir) / 'latent.ckpt'))
 
+		latent_codes_dataset = LatentCodesDataset(
+			dataset=dataset,
+			content_codes=latent_model.content_embedding.embedding.weight.detach(),
+			class_codes=latent_model.class_embedding.weight.detach()
+		)
+
 		autoencoder = get_autoencoder(config)
 		autoencoder.decoder.load_state_dict(latent_model.decoder.state_dict())
 		autoencoder.to(device)
 
-		data_loader = get_latent_codes_dataloader(dataset, config['train_encoders']['batch_size'], device,
-												  latent_model.content_embedding, latent_model.class_embedding)
+		data_loader = get_dataloader(latent_codes_dataset, config['train_encoders']['batch_size'], device)
 
 		with wandb.init(job_type='encoders', config=config):
 			save_config(config, Path(model_dir) / 'config.pkl')
@@ -87,16 +92,10 @@ class Main:
 				data_loader=data_loader,
 				callbacks=[
 					PlotTransferCallback(dataset, device, is_latent=False),
-					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), device, is_latent=False), 5),
+					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), device, is_latent=False), 2),
 					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt'),
-					TimedCallback(SaveModelCallback(Path(model_dir) / 'lord-vc'), 2)],
+					TimedCallback(SaveModelCallback(Path(model_dir) / 'lord-vc'), 5)],
 			)
-
-
-def memory(model):
-	mem_params = sum([param.nelement() * param.element_size() for param in model.parameters()])
-	mem_bufs = sum([buf.nelement() * buf.element_size() for buf in model.buffers()])
-	return mem_params + mem_bufs  # in bytes
 
 
 if __name__ == '__main__':

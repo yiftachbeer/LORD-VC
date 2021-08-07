@@ -2,7 +2,7 @@ import numpy as np
 
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.data.dataset import TensorDataset
+from torch.utils.data.dataset import Dataset, TensorDataset
 
 
 def load_data(data_path):
@@ -18,6 +18,24 @@ def load_data(data_path):
     return dataset, imgs.shape[1:], imgs.shape[0], data['n_classes'].item()
 
 
+class LatentCodesDataset(Dataset):
+
+    def __init__(self, dataset, content_codes, class_codes):
+        self.dataset = dataset
+        self.content_codes = content_codes
+        self.class_codes = class_codes
+
+    def __getitem__(self, index):
+        img_id, class_id, img = self.dataset[index]
+        content_code = self.content_codes[img_id]
+        class_code = self.class_codes[class_id]
+
+        return content_code, class_code, img
+
+    def __len__(self):
+        return len(self.dataset)
+
+
 class DeviceDataLoader:
     # TODO is there not a builtin solution for this?
 
@@ -30,44 +48,12 @@ class DeviceDataLoader:
 
     def __iter__(self):
         for batch in self.dataloader:
-            yield [tensor.to(self.device) for tensor in batch]
-
-
-def get_common_dataloader(dataset, batch_size):
-    return DataLoader(
-        dataset, batch_size=batch_size,
-        shuffle=True, sampler=None, batch_sampler=None,
-        num_workers=1, pin_memory=True, drop_last=True
-    )
+            yield tuple(tensor.to(self.device) for tensor in batch)
 
 
 def get_dataloader(dataset, batch_size, device):
-    return DeviceDataLoader(get_common_dataloader(dataset, batch_size), device)
-
-
-class LatentCodesDataLoader:
-
-    def __init__(self, dataloader, content_embedding, class_embedding):
-        self.dataloader = dataloader
-        self.content_embedding = content_embedding
-        self.class_embedding = class_embedding
-
-    def __len__(self):
-        return len(self.dataloader)
-
-    def __iter__(self):
-        for batch in self.dataloader:
-            img_id, class_id, img = batch
-            content_code = self.content_embedding(img_id)
-            class_code = self.class_embedding(class_id)
-
-            yield content_code, class_code, img
-
-
-def get_latent_codes_dataloader(dataset, batch_size, device, content_embedding, class_embedding):
-    return DeviceDataLoader(
-        LatentCodesDataLoader(
-            get_common_dataloader(dataset, batch_size),
-            content_embedding,
-            class_embedding),
-        device)
+    return DeviceDataLoader(DataLoader(
+        dataset, batch_size=batch_size,
+        shuffle=True, sampler=None, batch_sampler=None,
+        num_workers=1, pin_memory=True, drop_last=True
+    ), device)
