@@ -85,7 +85,7 @@ class Main:
 				config['train_encoders']['n_epochs'],
 				callbacks=[
 					PlotTransferCallback(dataset, device, is_latent=False),
-					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), device, is_latent=False), 2),
+					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), device, is_latent=False), 5),
 					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt'),
 					TimedCallback(SaveModelCallback(Path(model_dir) / 'lord-vc'), 5)],
 			)
