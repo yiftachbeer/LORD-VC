@@ -25,9 +25,8 @@ class TimedCallback:
 
 class PlotTransferCallback:
 
-    def __init__(self, dataset, device, n_samples=4, is_latent=True):
+    def __init__(self, dataset, n_samples=4, is_latent=True):
         self.dataset = dataset
-        self.device = device
         self.n_samples = n_samples
         self.is_latent = is_latent
 
@@ -52,13 +51,15 @@ class PlotTransferCallback:
         return model.convert(content_img, class_img)
 
     def generate_plot(self, model, epoch, convert_fn):
+        device = next(model.parameters()).device
+
         model.eval()
         with torch.no_grad():
             img_idx = torch.from_numpy(
                 np.random.RandomState(seed=4).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
                     np.int64))
 
-            img_ids, class_ids, imgs = [tensor.to(self.device) for tensor in self.dataset[img_idx]]
+            img_ids, class_ids, imgs = [tensor.to(device) for tensor in self.dataset[img_idx]]
             grid_to_plot = [None] * ((self.n_samples + 1) * (self.n_samples + 1))
             for i in range(self.n_samples):
                 # row headers (class)
@@ -100,10 +101,9 @@ class PlotTransferCallback:
 
 class GenerateAudioSamplesCallback:
 
-    def __init__(self, dataset, save_dir: Path, device, n_samples=3, save_every: int = 5, is_latent=True):
+    def __init__(self, dataset, save_dir: Path, n_samples=3, save_every: int = 5, is_latent=True):
         self.dataset = dataset
         self.save_dir = save_dir
-        self.device = device
         self.mel2wav = Mel2Wav()
         self.n_samples = n_samples
         self.save_every = save_every
@@ -129,13 +129,15 @@ class GenerateAudioSamplesCallback:
         self.save_samples(model, epoch, convert_fn)
 
     def save_samples(self, model, epoch, convert_fn):
+        device = next(model.parameters()).device
+
         model.eval()
         with torch.no_grad():
             img_idx = torch.from_numpy(
                 np.random.RandomState(seed=4).choice(len(self.dataset), size=self.n_samples, replace=False).astype(
                     np.int64))
 
-            img_ids, class_ids, imgs = [tensor.to(self.device) for tensor in self.dataset[img_idx]]
+            img_ids, class_ids, imgs = [tensor.to(device) for tensor in self.dataset[img_idx]]
 
             mels = []
             paths = []
@@ -158,13 +160,13 @@ class GenerateAudioSamplesCallback:
                         paths.append(samples_dir / f'transfer_{content_id}({orig_class_id}to{converted_class_id}).wav')
 
             model.cpu()
-            self.mel2wav.to(self.device)
+            self.mel2wav.to(device)
 
             self.mel2wav.to_files(mels, paths)
             wandb.log({f'samples-{epoch:03}': [wandb.Audio(str(path), caption=path.name) for path in paths]}, step=epoch)
 
             self.mel2wav.cpu()
-            model.to(self.device)
+            model.to(device)
 
 
 class SaveCheckpointCallback:

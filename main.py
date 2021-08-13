@@ -42,7 +42,6 @@ class Main:
 
 	def train(self, data_path: str, save_path: str, **kwargs):
 		config = get_config(**kwargs)
-		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		dataset, n_imgs, n_classes = load_data(data_path)
 
 		model = get_latent_model(config, n_imgs, n_classes)
@@ -50,19 +49,18 @@ class Main:
 
 		with wandb.init(job_type='latent', config=config):
 			save_config(config, Path(save_path) / 'config.pkl')
-			Trainer(device).fit(
+			Trainer().fit(
 				LatentModule(model, config, n_imgs),
 				get_dataloader(dataset, config['train']['batch_size']),
 				config['train']['n_epochs'],
 				callbacks=[
-					PlotTransferCallback(dataset, device, is_latent=True),
-					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_latent'), device, is_latent=True), 5),
+					PlotTransferCallback(dataset, is_latent=True),
+					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_latent'), is_latent=True), 5),
 					SaveCheckpointCallback(Path(save_path) / 'latent.ckpt')],
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
 		config = get_config(**kwargs)
-		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		dataset, n_imgs, n_classes = load_data(data_path)
 
 		latent_model = get_latent_model(config, n_imgs, n_classes)
@@ -79,13 +77,13 @@ class Main:
 
 		with wandb.init(job_type='encoders', config=config):
 			save_config(config, Path(model_dir) / 'config.pkl')
-			Trainer(device).fit(
+			Trainer().fit(
 				AutoEncoderModule(autoencoder, config, n_imgs),
 				get_dataloader(latent_codes_dataset, config['train_encoders']['batch_size']),
 				config['train_encoders']['n_epochs'],
 				callbacks=[
-					PlotTransferCallback(dataset, device, is_latent=False),
-					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), device, is_latent=False), 5),
+					PlotTransferCallback(dataset, is_latent=False),
+					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), is_latent=False), 5),
 					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt'),
 					TimedCallback(SaveModelCallback(Path(model_dir) / 'lord-vc'), 5)],
 			)

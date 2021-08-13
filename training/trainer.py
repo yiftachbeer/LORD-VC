@@ -1,6 +1,8 @@
 from tqdm import tqdm
 import wandb
 
+import torch
+
 
 class AverageMeter:
 
@@ -22,8 +24,8 @@ class AverageMeter:
 
 class Trainer:
 
-	def __init__(self, device):
-		self.device = device
+	def __init__(self):
+		self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 	def fit(self, module, data_loader, n_epochs, callbacks):
 		module.to(self.device)
