@@ -9,7 +9,7 @@ import torch
 from data import load_data, get_dataloader, LatentCodesDataset
 from training.trainer import Trainer
 from training.modules import LatentModule, AutoEncoderModule
-from config import get_config, save_config
+from config import get_config
 from model.wav2mel import Wav2Mel
 from model.adain_vc import get_latent_model, get_autoencoder
 from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCheckpointCallback, SaveModelCallback, TimedCallback
@@ -48,7 +48,6 @@ class Main:
 		model.init()
 
 		with wandb.init(job_type='latent', config=config):
-			save_config(config, Path(save_path) / 'config.pkl')
 			Trainer().fit(
 				LatentModule(model, config, n_imgs),
 				get_dataloader(dataset, config['train']['batch_size']),
@@ -76,7 +75,6 @@ class Main:
 		autoencoder.decoder.load_state_dict(latent_model.decoder.state_dict())
 
 		with wandb.init(job_type='encoders', config=config):
-			save_config(config, Path(model_dir) / 'config.pkl')
 			Trainer().fit(
 				AutoEncoderModule(autoencoder, config, n_imgs),
 				get_dataloader(latent_codes_dataset, config['train_encoders']['batch_size']),

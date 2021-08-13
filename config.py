@@ -1,10 +1,3 @@
-from typing import Dict
-
-from pathlib import Path
-import pickle
-
-import wandb
-
 default_config = dict(
 	content_dim=2048,
 	class_dim=128,
@@ -112,12 +105,3 @@ def get_config(**kwargs):
 	update_nested(config, kwargs)
 
 	return config
-
-
-def save_config(config: Dict, config_path: Path):
-	if not config_path.parent.exists():
-		config_path.parent.mkdir(parents=True)
-
-	with open(config_path, 'wb') as config_fd:
-		pickle.dump(config, config_fd)
-	wandb.save(str(config_path))
