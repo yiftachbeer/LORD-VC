@@ -38,15 +38,22 @@ inference.py convert_many <model_path> <pairs_file_path>
 
 ### Evaluation
 
+Calculating neural MOS scores for generated samples:
+```
+evaluation.py mean_opinion_score <data_dir>
+```
+
+Evaluate the similarity between the speakers in converted files and their original recordings:
+
+```
+evaluation.py speaker_verification <converted_files_dir> <speakers_dir>
+```
+
 Creating t-SNE plots for class and content:
 ```
 evaluation.py tsne <data_dir> <model_path> [<segment>] [<n_utterances>]
 ```
 
-Calculating neural MOS scores for generated samples:
-```
-evaluation.py mean_opinion_score <data_dir>
-```
 
 ## See Also
 
