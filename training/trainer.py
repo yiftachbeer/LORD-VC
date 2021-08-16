@@ -42,7 +42,7 @@ class Trainer:
 
 				module.optimizer.zero_grad(set_to_none=True)
 
-				train_result = module.train_step(batch)
+				train_result = module.training_step(batch)
 				loss = train_result['loss']
 				loss.backward()
 

@@ -37,7 +37,7 @@ class LatentModule(nn.Module):
             eta_min=config['train']['learning_rate']['min']
         )
 
-    def train_step(self, batch):
+    def training_step(self, batch):
         img_id, class_id, img = batch
 
         out_img, out_content_code, out_class_code = self.model(img_id, class_id)
@@ -50,9 +50,9 @@ class LatentModule(nn.Module):
 
         return {
             'loss': loss,
-            'reconstruction-loss': reconstruction_loss,
-            'content-penalty-loss': content_penalty,
-            'speaker-loss': speaker_loss,
+            'reconstruction-loss': reconstruction_loss.detach(),
+            'content-penalty-loss': content_penalty.detach(),
+            'speaker-loss': speaker_loss.detach(),
         }
 
 
@@ -77,7 +77,7 @@ class AutoEncoderModule(nn.Module):
             eta_min=config['train_encoders']['learning_rate']['min']
         )
 
-    def train_step(self, batch):
+    def training_step(self, batch):
         content_code, class_code, img = batch
 
         out_img, out_content_code, out_class_code = self.model(img)
@@ -90,7 +90,7 @@ class AutoEncoderModule(nn.Module):
 
         return {
             'loss': loss,
-            'reconstruction-loss': loss_reconstruction,
-            'content-loss': loss_content,
-            'class-loss': loss_class,
+            'reconstruction-loss': loss_reconstruction.detach(),
+            'content-loss': loss_content.detach(),
+            'class-loss': loss_class.detach(),
         }
