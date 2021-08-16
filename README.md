@@ -3,6 +3,10 @@ Disentanglement of speaker from speech by combining [LORD](http://www.vision.huj
 
 ## Usage
 
+For all demonstrated files, using `--help` shows documentation both at file level and command level (e.g. `main.py --help` lists commands, `main.py train --help` details available flags).
+
+For training, any key in the dictionary in `config.py` can be overridden. Nested keys can be acessed using a `/`, e.g. `--train_encoders/n_epochs 200`.   
+
 ### Training
 
 Preprocessing a dataset:
@@ -20,9 +24,11 @@ Training the autoencoder (second stage):
 main.py train_encoders <data_path> <model_dir>
 ```
 
+### Inference
+
 Converting the speaker of an audio sample to that of another using a trained model:
 ```
-main.py convert <model_path> <content_file_path> <speaker_file_path> <output_path>
+inference.py convert <model_path> <content_file_path> <speaker_file_path> <output_path>
 ```
 
 ### Evaluation
