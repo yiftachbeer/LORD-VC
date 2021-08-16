@@ -5,7 +5,7 @@ Disentanglement of speaker from speech by combining [LORD](http://www.vision.huj
 
 For all demonstrated files, using `--help` shows documentation both at file level and command level (e.g. `main.py --help` lists commands, `main.py train --help` details available flags).
 
-For training, any key in the dictionary in `config.py` can be overridden. Nested keys can be acessed using a `/`, e.g. `--train_encoders/n_epochs 200`.   
+For training, any key in the dictionary in `config.py` can be overridden. Nested keys can be accessed using a `/`, e.g. `--train_encoders/n_epochs 200`.   
 
 ### Training
 
@@ -29,6 +29,11 @@ main.py train_encoders <data_path> <model_dir>
 Converting the speaker of an audio sample to that of another using a trained model:
 ```
 inference.py convert <model_path> <content_file_path> <speaker_file_path> <output_path>
+```
+
+Multiple conversions can be performed at once by creating a file with lines of the form `<content_file_path> <speaker_file_path> <output_path>` which we call a pairs file:
+```
+inference.py convert_many <model_path> <pairs_file_path>
 ```
 
 ### Evaluation
