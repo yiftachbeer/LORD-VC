@@ -72,7 +72,7 @@ def speaker_verification(converted_files_dir: str, speakers_dir: str, speaker_em
         speaker_embedding = speaker_embeddings[speaker_name]
         converted_speaker_embedding = resemblyzer.embed_utterance(preprocess_wav(converted_path))
 
-        cosine_similarity = similarity(converted_speaker_embedding, speaker_embedding)
+        cosine_similarity = similarity(torch.from_numpy(converted_speaker_embedding), torch.from_numpy(speaker_embedding))
         cosine_similarities.append(cosine_similarity)
 
     return np.mean(cosine_similarities), cosine_similarities
