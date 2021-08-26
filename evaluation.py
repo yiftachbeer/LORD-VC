@@ -64,18 +64,23 @@ def speaker_verification(converted_files_dir: str, speakers_dir: str, speaker_em
     else:
         speaker_embeddings = _create_speaker_embeddings(resemblyzer, speakers_dir, speaker_embeddings_path)
 
+    speaker_names = list(speaker_embeddings.keys())
+    speaker_name2idx = {name: i for i, name in enumerate(speaker_names)}
+    speaker_embeddings_tensor = torch.from_numpy(np.array(list(speaker_embeddings.values())))
+
     # calculate similarities
     similarity = nn.CosineSimilarity()
-    cosine_similarities = []
+    successes = []
     for converted_path in Path(converted_files_dir).glob('*'):
         speaker_name = converted_path.name.split('_')[0]
-        speaker_embedding = speaker_embeddings[speaker_name]
-        converted_speaker_embedding = resemblyzer.embed_utterance(preprocess_wav(converted_path))
+        speaker_idx = speaker_name2idx[speaker_name]
+        converted_speaker_embedding = torch.from_numpy(resemblyzer.embed_utterance(preprocess_wav(converted_path)))
 
-        cosine_similarity = similarity(torch.from_numpy(converted_speaker_embedding), torch.from_numpy(speaker_embedding))
-        cosine_similarities.append(cosine_similarity)
+        cosine_similarities = similarity(converted_speaker_embedding[None, :], speaker_embeddings_tensor)
+        success = torch.argmax(cosine_similarities) == speaker_idx
+        successes.append(success)
 
-    return np.mean(cosine_similarities), cosine_similarities
+    return torch.tensor(successes).float().mean().item()
 
 
 def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances: int = 20):
