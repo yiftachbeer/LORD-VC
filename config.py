@@ -53,7 +53,7 @@ default_config = dict(
 	),
 
 	train=dict(
-		batch_size=16,
+		batch_size=128,
 		n_epochs=200,
 
 		learning_rate=dict(
