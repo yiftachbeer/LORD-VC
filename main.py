@@ -49,7 +49,7 @@ class Main:
 
 		with wandb.init(job_type='latent', config=config):
 			Trainer().fit(
-				LatentModule(model, config, n_imgs),
+				LatentModule(model, config, n_imgs // config['train']['batch_size']),
 				get_dataloader(dataset, config['train']['batch_size']),
 				config['train']['n_epochs'],
 				callbacks=[

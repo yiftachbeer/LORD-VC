@@ -10,7 +10,7 @@ from model.loss import VGGDistance, SpeakerLoss
 
 class LatentModule(nn.Module):
 
-    def __init__(self, model, config, n_imgs):
+    def __init__(self, model, config, n_batches):
         super().__init__()
 
         self.model = model
@@ -33,7 +33,7 @@ class LatentModule(nn.Module):
 
         self.scheduler = CosineAnnealingLR(
             self.optimizer,
-            T_max=config['train']['n_epochs'] * n_imgs,
+            T_max=config['train']['n_epochs'] * n_batches,
             eta_min=config['train']['learning_rate']['min']
         )
 
@@ -58,7 +58,7 @@ class LatentModule(nn.Module):
 
 class AutoEncoderModule(nn.Module):
 
-    def __init__(self, model, config, n_imgs):
+    def __init__(self, model, config, n_batches):
         super().__init__()
 
         self.model = model
@@ -73,7 +73,7 @@ class AutoEncoderModule(nn.Module):
 
         self.scheduler = CosineAnnealingLR(
             self.optimizer,
-            T_max=config['train_encoders']['n_epochs'] * n_imgs,
+            T_max=config['train_encoders']['n_epochs'] * n_batches,
             eta_min=config['train_encoders']['learning_rate']['min']
         )
 
