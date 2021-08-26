@@ -105,7 +105,7 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances:
         for wav_file in sorted(speaker.rglob('*mic2.flac'))[:n_utterances]:
             with torch.no_grad():
                 mel = wav2mel.parse_file(wav_file).to(device)
-                _, content_code, class_code = autoencoder(mel[None, None, ...])
+                _, content_code, class_code = autoencoder(mel[None, ...])
 
                 content_code = content_code[0].flatten().cpu().numpy()
                 start = content_code.shape[0] // 2 - segment // 2
