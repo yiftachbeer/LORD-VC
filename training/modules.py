@@ -42,9 +42,9 @@ class LatentModule(nn.Module):
 
         out_img, out_content_code, out_class_code = self.model(img_id, class_id)
 
-        reconstruction_loss = self.reconstruction_criterion(out_img, img)
+        reconstruction_loss = self.reconstruction_criterion(out_img.unsqueeze(1), img)
         content_penalty = self.lambda_content * torch.sum(out_content_code ** 2, dim=1).mean()
-        speaker_loss = self.lambda_speaker * self.speaker_criterion(out_img, img)
+        speaker_loss = self.lambda_speaker * self.speaker_criterion(out_img.unsqueeze(1), img)
 
         loss = reconstruction_loss + content_penalty + speaker_loss
 
@@ -80,9 +80,9 @@ class AutoEncoderModule(nn.Module):
     def training_step(self, batch):
         content_code, class_code, img = batch
 
-        out_img, out_content_code, out_class_code = self.model(img)
+        out_img, out_content_code, out_class_code = self.model(img.squeeze(1))
 
-        loss_reconstruction = self.reconstruction_criterion(out_img, img)
+        loss_reconstruction = self.reconstruction_criterion(out_img.unsqueeze(1), img)
         loss_content = 10 * self.embedding_criterion(out_content_code.reshape(content_code.shape), content_code)
         loss_class = 10 * self.embedding_criterion(out_class_code, class_code)
 

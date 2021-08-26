@@ -21,7 +21,7 @@ class LatentModel(nn.Module):
         # matching dims from LORD to AdaIN-VC decoder
         content_code = content_code.reshape((-1, 128, 16))
 
-        generated_img = self.decoder(content_code, class_code).unsqueeze(1)  # add channel
+        generated_img = self.decoder(content_code, class_code)
 
         return generated_img, content_code, class_code
 
@@ -48,10 +48,10 @@ class AutoEncoder(nn.Module):
 
     @torch.jit.export
     def convert(self, content_img: Tensor, class_img: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
-        content_code = self.content_encoder(content_img.squeeze(1))
-        class_code = self.class_encoder(class_img.squeeze(1))
+        content_code = self.content_encoder(content_img)
+        class_code = self.class_encoder(class_img)
 
-        generated_img = self.decoder(content_code, class_code).unsqueeze(1)  # add channel
+        generated_img = self.decoder(content_code, class_code)
 
         return generated_img, content_code, class_code
 

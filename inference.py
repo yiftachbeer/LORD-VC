@@ -13,8 +13,8 @@ def _convert_pair(model, content_file_path, speaker_file_path, wav2mel, device):
         speaker_mel = wav2mel.parse_file(speaker_file_path).to(device)
 
         return model.convert(
-            content_img=content_mel[None, None, ...],
-            class_img=speaker_mel[None, None, ...]
+            content_mel[None, ...],
+            speaker_mel[None, ...],
         )[0][0, 0]
 
 
