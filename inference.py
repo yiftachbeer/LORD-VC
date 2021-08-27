@@ -12,10 +12,7 @@ def _convert_pair(model, content_file_path, speaker_file_path, wav2mel, device):
         content_mel = wav2mel.parse_file(content_file_path).to(device)
         speaker_mel = wav2mel.parse_file(speaker_file_path).to(device)
 
-        return model.convert(
-            content_mel[None, ...],
-            speaker_mel[None, ...],
-        )[0][0, 0]
+        return model.convert(content_mel[None, ...], speaker_mel[None, ...])[0].squeeze(0)
 
 
 def convert(model_path: str, content_file_path: str, speaker_file_path: str, output_path: str):
