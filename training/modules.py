@@ -13,15 +13,15 @@ class LatentModule(nn.Module):
     def __init__(self, model, config, n_batches):
         super().__init__()
 
+        self.lambda_content = config['content_decay']
+        self.lambda_speaker = config['lambda_speaker']
+
         self.model = model
         self.reconstruction_criterion = VGGDistance(config['perceptual_loss']['layers'])
         if self.lambda_speaker != 0:
             self.speaker_criterion = SpeakerLoss()
         else:
             self.speaker_criterion = lambda x1, x2: 0
-
-        self.lambda_content = config['content_decay']
-        self.lambda_speaker = config['lambda_speaker']
 
         self.optimizer = Adam([
             {
