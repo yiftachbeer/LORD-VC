@@ -32,28 +32,25 @@ class Trainer:
 		model = module.model
 
 		train_loss = AverageMeter()
-		for epoch in range(n_epochs):
+		for epoch in tqdm(range(n_epochs), desc='epochs'):
 			model.train()
 			train_loss.reset()
 
-			pbar = tqdm(iterable=data_loader)
-			for batch in pbar:
-				batch = tuple(tensor.to(self.device) for tensor in batch)
+			with tqdm(data_loader, desc='iterations', leave=False) as pbar:
+				for batch in pbar:
+					batch = tuple(tensor.to(self.device) for tensor in batch)
 
-				module.optimizer.zero_grad(set_to_none=True)
+					module.optimizer.zero_grad(set_to_none=True)
 
-				train_result = module.training_step(batch)
-				loss = train_result['loss']
-				loss.backward()
+					train_result = module.training_step(batch)
+					loss = train_result['loss']
+					loss.backward()
 
-				module.optimizer.step()
-				module.scheduler.step()
+					module.optimizer.step()
+					module.scheduler.step()
 
-				train_loss.update(loss.item())
-				pbar.set_description_str('epoch #{}'.format(epoch))
-				pbar.set_postfix(loss=train_loss.avg)
-
-			pbar.close()
+					train_loss.update(loss.item())
+					pbar.set_postfix(loss=train_loss.avg)
 
 			for callback in callbacks:
 				callback.on_epoch_end(model, epoch)
