@@ -18,7 +18,13 @@ from audio import Wav2Mel
 from model.lord import AutoEncoder
 
 
-def mean_opinion_score(data_path: str, pretrained_path: str = 'pretrained/neural_mos.pt'):
+def mean_opinion_score(data_dir: str, pretrained_path: str = 'pretrained/neural_mos.pt'):
+    """
+    Predict the MOS for a given directory of synthesized speech, using an MBNet network (https://arxiv.org/abs/2103.00110(
+    :param data_dir: Directory which contains audio files to be assessed.
+    :param pretrained_path: Path to the a JIT compiled pretrained model.
+    :return: predicted mean MOS for the files in the directory.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     neural_mos = torch.jit.load(pretrained_path, map_location=device).eval()
@@ -26,7 +32,7 @@ def mean_opinion_score(data_path: str, pretrained_path: str = 'pretrained/neural
     tfm = sox.Transformer()
 
     scores = []
-    for file_path in Path(data_path).glob('*'):
+    for file_path in Path(data_dir).glob('*'):
         wav, _ = librosa.load(file_path, sr=16000)
         wav = tfm.build_array(input_array=wav, sample_rate_in=16000)
         spect = np.abs(librosa.stft(wav, n_fft=512)).T[None, None, ...]
@@ -63,6 +69,15 @@ def _create_speaker_embeddings(resemblyzer, speakers_dir: str, save_path: str = 
 
 
 def speaker_verification(converted_files_dir: str, speakers_dir: str, speaker_embeddings_path: str = None):
+    """
+    Calculate the speaker classification accuracy using Resemblyzer.
+    :param converted_files_dir: Directory which contains audio files to be assessed. Their name pattern should start
+        with the speaker name and then an underscore character ('_').
+    :param speakers_dir: Ground truth data directory, which should be divided to speaker subdirectories.
+    :param speaker_embeddings_path: Path to a pre-computed dictionary of speaker embeddings. Will be computed and saved
+        if does not exist.
+    :return: Speaker classification accuracy for the given files.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     resemblyzer = VoiceEncoder(device, verbose=False)
 
@@ -93,6 +108,13 @@ def speaker_verification(converted_files_dir: str, speakers_dir: str, speaker_em
 
 
 def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances: int = 20):
+    """
+    Generate t-SNE plots for the class and content.
+    :param data_dir: The directory for the ground truth data, divided by speakers.
+    :param model_path: The path to the model to evaluate.
+    :param segment: The length of the segment to extract from each file.
+    :param n_utterances: Number of utterances to limit to (for faster results).
+    """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     wav2mel = Wav2Mel()
@@ -138,7 +160,7 @@ def tsne_plots(data_dir: str, model_path: str, segment: int = 128, n_utterances:
 
 if __name__ == '__main__':
     fire.Fire({
-        'tsne': tsne_plots,
         'mos': mean_opinion_score,
         'speaker_verification': speaker_verification,
+        'tsne': tsne_plots,
     })

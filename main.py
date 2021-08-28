@@ -9,10 +9,10 @@ import torch
 from data import load_data, get_dataloader, LatentCodesDataset
 from training.trainer import Trainer
 from training.modules import LatentModule, AutoEncoderModule
-from config import get_config
+from training.config import get_config
 from audio import Wav2Mel
 from model.adain_vc import get_latent_model, get_autoencoder
-from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCheckpointCallback, SaveModelCallback, TimedCallback
+from training.callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCheckpointCallback, SaveModelCallback, TimedCallback
 
 
 class Main:
@@ -67,7 +67,8 @@ class Main:
 				callbacks=[
 					PlotTransferCallback(dataset, is_latent=True),
 					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_latent'), is_latent=True), 5),
-					SaveCheckpointCallback(Path(save_path) / 'latent.ckpt')],
+					SaveCheckpointCallback(Path(save_path) / 'latent.ckpt')
+				],
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
@@ -101,7 +102,8 @@ class Main:
 					PlotTransferCallback(dataset, is_latent=False),
 					TimedCallback(GenerateAudioSamplesCallback(dataset, Path('samples_encoder'), is_latent=False), 5),
 					SaveCheckpointCallback(Path(model_dir) / 'autoencoder.ckpt'),
-					TimedCallback(SaveModelCallback(Path(model_dir) / 'lord-vc'), 5)],
+					TimedCallback(SaveModelCallback(Path(model_dir) / 'lord-vc'), 5)
+				],
 			)
 
 
