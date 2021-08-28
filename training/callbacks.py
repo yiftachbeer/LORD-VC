@@ -69,7 +69,7 @@ class PlotTransferCallback:
                 grid_to_plot[i + 1] = imgs[i, 0].detach().cpu().numpy()
                 for j in range(self.n_samples):
                     # converted image with class i and content j
-                    converted = convert_fn(model, i, j, imgs, img_ids.squeeze(0), class_ids)[0].squeeze(0).detach().cpu().numpy()
+                    converted = convert_fn(model, i, j, imgs.squeeze(1), img_ids, class_ids)[0].squeeze(0).detach().cpu().numpy()
                     grid_to_plot[(self.n_samples + 2) + i * (self.n_samples + 1) + j] = converted
 
             fig = plt.figure()
