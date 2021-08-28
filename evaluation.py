@@ -19,13 +19,6 @@ from model.lord import AutoEncoder
 
 
 def mean_opinion_score(data_path: str, pretrained_path: str = 'pretrained/neural_mos.pt'):
-    # A patch to remove the following message:
-    #   "UserWarning: RNN module weights are not part of single contiguous chunk of memory. This means they need to be
-    #    compacted at every call, possibly greately increasing memory usage. To compact weights again call
-    #    flatten_parameters()."
-    # that is coming from the pretrained neural MOS model.
-    warnings.filterwarnings("ignore")
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     neural_mos = torch.jit.load(pretrained_path, map_location=device).eval()
@@ -41,7 +34,15 @@ def mean_opinion_score(data_path: str, pretrained_path: str = 'pretrained/neural
 
         with torch.no_grad():
             spect = spect.to(device)
-            score = neural_mos.only_mean_inference(spect)
+
+            with warnings.catch_warnings():
+                # A patch to remove the following message:
+                # "UserWarning: RNN module weights are not part of single contiguous chunk of memory. This means they
+                # need to be compacted at every call, possibly greately increasing memory usage. To compact weights
+                # again call flatten_parameters()."
+                warnings.simplefilter("ignore")
+
+                score = neural_mos.only_mean_inference(spect)
             scores.append(score.item())
 
     return np.mean(scores)

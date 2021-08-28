@@ -16,8 +16,17 @@ from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCh
 
 
 class Main:
+	"""
+	Commands for training the LORD-VC model.
+	"""
 
 	def preprocess(self, data_dir: str, save_dest: str, segment: int = 128):
+		"""
+		Preprocess all data in the given directory into the format expected by the model.
+		:param data_dir: The directory in which data can be found. Should have subdirectory per speaker.
+		:param save_dest: The name of the output file to generate.
+		:param segment: The length, in frames, to take from each recording (cropped from the middle).
+		"""
 		wav2mel = Wav2Mel()
 
 		cropped_mels = []
@@ -38,6 +47,12 @@ class Main:
 				n_classes=np.unique(classes).size)
 
 	def train(self, data_path: str, save_path: str, **kwargs):
+		"""
+		Train the first stage (latent model).
+		:param data_path: The path to the preprocessed data file.
+		:param save_path: The directory to save the checkpoints at.
+		:param kwargs: For additional flags see config.py. Nested flags can be described with a '/' delimiter.
+		"""
 		config = get_config(**kwargs)
 		dataset, n_imgs, n_classes = load_data(data_path)
 
@@ -56,6 +71,12 @@ class Main:
 			)
 
 	def train_encoders(self, data_path: str, model_dir: str, **kwargs):
+		"""
+		Train the second stage (autoencoder).
+		:param data_path: The path to the preprocessed data file.
+		:param model_dir: The directory to save the checkpoints and final model at.
+		:param kwargs: For additional flags see config.py. Nested flags can be described with a '/' delimiter.
+		"""
 		config = get_config(**kwargs)
 		dataset, n_imgs, n_classes = load_data(data_path)
 
