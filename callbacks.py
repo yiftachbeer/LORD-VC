@@ -9,7 +9,7 @@ import wandb
 
 import torch
 
-from model.wav2mel import Mel2Wav
+from audio import Mel2Wav
 
 
 class TimedCallback:

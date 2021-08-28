@@ -14,7 +14,7 @@ from resemblyzer import preprocess_wav, VoiceEncoder
 import torch
 from torch import nn
 
-from model.wav2mel import Wav2Mel
+from audio import Wav2Mel
 from model.lord import AutoEncoder
 
 

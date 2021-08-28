@@ -10,7 +10,7 @@ from data import load_data, get_dataloader, LatentCodesDataset
 from training.trainer import Trainer
 from training.modules import LatentModule, AutoEncoderModule
 from config import get_config
-from model.wav2mel import Wav2Mel
+from audio import Wav2Mel
 from model.adain_vc import get_latent_model, get_autoencoder
 from callbacks import PlotTransferCallback, GenerateAudioSamplesCallback, SaveCheckpointCallback, SaveModelCallback, TimedCallback
 
@@ -22,23 +22,20 @@ class Main:
 
 		cropped_mels = []
 		classes = []
-		file_names = []
 
 		for i_spk, spk in enumerate(tqdm(sorted(Path(data_dir).glob('*')))):
-			for wav_file in sorted(spk.rglob('*mic2.flac')):
+			for wav_file in sorted(spk.rglob('*')):
 				mel = wav2mel.parse_file(wav_file)
 				if mel is not None and mel.shape[-1] > segment:
 					start = mel.shape[-1] // 2 - segment // 2
 
 					cropped_mels.append(mel[:, start:start + segment].numpy())
 					classes.append(i_spk)
-					file_names.append(str(wav_file))
 
 		np.savez(file=save_dest,
-				imgs=np.array(cropped_mels)[:, None, ...],  # add channel
+				imgs=np.array(cropped_mels)[:, None, ...],  # add channel to retain original LORD format
 				classes=np.array(classes),
-				n_classes=np.unique(classes).size,
-				file_names=file_names)
+				n_classes=np.unique(classes).size)
 
 	def train(self, data_path: str, save_path: str, **kwargs):
 		config = get_config(**kwargs)

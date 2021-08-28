@@ -3,7 +3,7 @@ import fire
 
 import torch
 
-from model.wav2mel import Wav2Mel, Mel2Wav
+from audio import Wav2Mel, Mel2Wav
 from model.lord import AutoEncoder
 
 
