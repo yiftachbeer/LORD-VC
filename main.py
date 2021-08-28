@@ -95,7 +95,7 @@ class Main:
 
 		with wandb.init(job_type='encoders', config=config):
 			Trainer().fit(
-				AutoEncoderModule(autoencoder, config, n_imgs),
+				AutoEncoderModule(autoencoder, config, n_imgs // config['train']['batch_size']),
 				get_dataloader(latent_codes_dataset, config['train_encoders']['batch_size']),
 				config['train_encoders']['n_epochs'],
 				callbacks=[
